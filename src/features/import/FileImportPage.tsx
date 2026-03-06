@@ -3,6 +3,8 @@ import { Upload, Button, Form, Input, Select, Switch, Space, Steps, Card, Alert,
 import { UploadOutlined, CloudUploadOutlined } from '@ant-design/icons';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
 import { useQuery } from '@tanstack/react-query';
+import type { UploadFile } from 'antd';
+import JSZip from 'jszip';
 
 export default function FileImportPage() {
   const { data: schemasData } = useQuery({
@@ -14,24 +16,45 @@ export default function FileImportPage() {
 
   const [step, setStep] = useState(0);
   const [uploadedFile, setUploadedFile] = useState<string | null>(null);
+  const [fileList, setFileList] = useState<UploadFile[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [dryResult, setDryResult] = useState<any>(null);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [form] = Form.useForm();
 
-  const handleUpload = async (file: File) => {
+  const handleUpload = async () => {
+    const originFiles = fileList.map((f) => f.originFileObj!);
+    if (originFiles.length === 0) return;
+
+    setUploading(true);
     try {
+      let file: File;
+      if (originFiles.length === 1) {
+        file = originFiles[0];
+      } else {
+        const zip = new JSZip();
+        for (const f of originFiles) {
+          zip.file(f.name, f);
+        }
+        const blob = await zip.generateAsync({ type: 'blob' });
+        file = new File([blob], 'files.zip', { type: 'application/zip' });
+      }
+
       const formData = new FormData();
       formData.append('filename', file);
       await getAdminClient().provisioning.fileImport.postFileUpload(formData);
       setUploadedFile(file.name);
-      message.success('File uploaded');
+      message.success(originFiles.length > 1
+        ? `${originFiles.length} files zipped and uploaded`
+        : 'File uploaded');
       setStep(1);
     } catch (e: unknown) {
       message.error(getErrorMessage(e));
+    } finally {
+      setUploading(false);
     }
-    return false; // prevent antd auto upload
   };
 
   const handleDryRun = async () => {
@@ -70,6 +93,14 @@ export default function FileImportPage() {
     }
   };
 
+  const handleReset = () => {
+    setStep(0);
+    setUploadedFile(null);
+    setFileList([]);
+    setDryResult(null);
+    setImportResult(null);
+  };
+
   return (
     <div>
       <h2>File Import</h2>
@@ -82,11 +113,32 @@ export default function FileImportPage() {
 
       {step === 0 && (
         <Card>
-          <Upload.Dragger beforeUpload={handleUpload} showUploadList={false}>
+          <Upload.Dragger
+            multiple
+            beforeUpload={() => false}
+            fileList={fileList}
+            onChange={({ fileList: newList }) => setFileList(newList)}
+          >
             <p><UploadOutlined style={{ fontSize: 48, color: '#1890ff' }} /></p>
-            <p>Click or drag file to upload</p>
-            <p style={{ color: '#888' }}>Supports CSV, GeoJSON, Shapefile (zip), GeoPackage, KML</p>
+            <p>Click or drag file(s) to upload</p>
+            <p style={{ color: '#888' }}>
+              Supports CSV, GeoJSON, Shapefile (zip or individual files), GeoPackage, KML
+            </p>
+            <p style={{ color: '#888' }}>
+              Multiple files will be zipped automatically
+            </p>
           </Upload.Dragger>
+          {fileList.length > 0 && (
+            <Button
+              type="primary"
+              icon={<CloudUploadOutlined />}
+              onClick={handleUpload}
+              loading={uploading}
+              style={{ marginTop: 16 }}
+            >
+              Upload {fileList.length > 1 ? `${fileList.length} files as zip` : 'file'}
+            </Button>
+          )}
         </Card>
       )}
 
@@ -141,7 +193,7 @@ export default function FileImportPage() {
         <Card title="Import Complete">
           <Alert type="success" message="File imported successfully" style={{ marginBottom: 12 }} />
           <pre>{JSON.stringify(importResult, null, 2)}</pre>
-          <Button onClick={() => { setStep(0); setUploadedFile(null); setDryResult(null); setImportResult(null); }}>
+          <Button onClick={handleReset}>
             Import Another File
           </Button>
         </Card>
