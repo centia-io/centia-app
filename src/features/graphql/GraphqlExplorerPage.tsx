@@ -31,7 +31,7 @@ export default function GraphqlExplorerPage() {
       const vars = JSON.parse(variables);
       const res = await getGql(schema).request({ query, variables: vars });
       if (res.errors?.length) {
-        setError(res.errors.map((e) => e.message).join('\n'));
+        setError(res.errors.map((e: { message: string }) => e.message).join('\n'));
       }
       setResult(res.data);
     } catch (e: any) {

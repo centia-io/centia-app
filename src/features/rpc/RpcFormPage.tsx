@@ -16,7 +16,7 @@ export default function RpcFormPage() {
     if (!isNew && method) {
       const admin = getAdminClient();
       admin.provisioning.rpcMethods.getRpc(method)
-        .then((d) => {
+        .then((d: unknown) => {
           const m = (Array.isArray(d) ? d[0] : d) as { method: string; output_format?: string; q?: string };
           form.setFieldsValue({ method: m.method, output_format: m.output_format ?? 'json' });
           setSql(m.q ?? '');

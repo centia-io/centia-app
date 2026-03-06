@@ -10,14 +10,14 @@ export default function CallbackPage() {
   useEffect(() => {
     getCodeFlow()
       .redirectHandle()
-      .then((ok) => {
+      .then((ok: boolean) => {
         if (ok) {
           navigate('/', { replace: true });
         } else {
           setError('Authentication failed');
         }
       })
-      .catch((err) => setError(String(err)));
+      .catch((err: unknown) => setError(String(err)));
   }, [navigate]);
 
   if (error) return <div style={{ padding: 40 }}>{error}</div>;
