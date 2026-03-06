@@ -44,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     getCodeFlow().signOut();
     setIsAuth(false);
     setUser(null);
+    window.location.replace('/login');
   }, []);
 
   return (
