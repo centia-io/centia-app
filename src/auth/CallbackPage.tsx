@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Spin, Flex } from 'antd';
 import { getCodeFlow } from '../baas/client';
 
 export default function CallbackPage() {
-  const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -12,13 +10,13 @@ export default function CallbackPage() {
       .redirectHandle()
       .then((ok: boolean) => {
         if (ok) {
-          navigate('/', { replace: true });
+          window.location.replace('/');
         } else {
           setError('Authentication failed');
         }
       })
       .catch((err: unknown) => setError(String(err)));
-  }, [navigate]);
+  }, []);
 
   if (error) return <div style={{ padding: 40 }}>{error}</div>;
 
