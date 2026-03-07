@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Button, Card, Flex, Spin, Typography } from 'antd';
+import { Button, Card, Flex, Spin, Typography, theme } from 'antd';
 import { LoginOutlined } from '@ant-design/icons';
 import { useAuth } from './AuthProvider';
 
@@ -7,6 +7,7 @@ const AUTO_LOGIN_KEY = 'centia_auto_login_attempted';
 
 export default function LoginPage() {
   const { signIn } = useAuth();
+  const { token } = theme.useToken();
   const attempted = useRef(sessionStorage.getItem(AUTO_LOGIN_KEY) === '1');
 
   useEffect(() => {
@@ -18,14 +19,14 @@ export default function LoginPage() {
 
   if (!attempted.current) {
     return (
-      <Flex justify="center" align="center" style={{ minHeight: '100vh', background: '#f0f2f5' }}>
+      <Flex justify="center" align="center" style={{ minHeight: '100vh', background: token.colorBgLayout }}>
         <Spin size="large" />
       </Flex>
     );
   }
 
   return (
-    <Flex justify="center" align="center" style={{ minHeight: '100vh', background: '#f0f2f5' }}>
+    <Flex justify="center" align="center" style={{ minHeight: '100vh', background: token.colorBgLayout }}>
       <Card style={{ width: 360, textAlign: 'center' }}>
         <img src="https://centia.io/img/centia-logo-dark.svg" alt="Centia.io" style={{ height: 40, marginBottom: 16 }} />
         <Typography.Title level={3}>Centia.io Admin</Typography.Title>

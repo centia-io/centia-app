@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Table, Button, Space, Drawer, Modal, Form, Input, InputNumber, Select, Checkbox, Spin, Alert, Tabs, message } from 'antd';
+import { Table, Button, Space, Drawer, Modal, Form, Input, InputNumber, Select, Checkbox, Spin, Alert, Tabs, Typography, message } from 'antd';
 import { PlusOutlined, DeleteOutlined, ArrowLeftOutlined, SaveOutlined, CodeOutlined, EditOutlined } from '@ant-design/icons';
-import CodeEditor from '../../components/CodeEditor';
 import { getMeta } from '../../baas/client';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
+import SchemaForm from '../../components/SchemaForm';
+import { testPropertiesSchema } from '../../data/testPropertiesSchema';
 import { confirmDelete } from '../../components/ConfirmDelete';
 import { useQuery } from '@tanstack/react-query';
 import { queryClient } from '../../data/queryClient';
@@ -36,15 +37,16 @@ function TablesPanel({ schema }: { schema: string }) {
   const [tablesMeta, setTablesMeta] = useState<Record<string, TableMeta>>({});
   const [dirtyMeta, setDirtyMeta] = useState<Record<string, Partial<TableMeta>>>({});
   const [savingMeta, setSavingMeta] = useState<string | null>(null);
-  const [tablesProps, setTablesProps] = useState<Record<string, string>>({});
+  const [tablesProps, setTablesProps] = useState<Record<string, Record<string, any>>>({});
   const [propsModal, setPropsModal] = useState<string | null>(null);
-  const [propsJson, setPropsJson] = useState('{}');
+  const [propsForm] = Form.useForm();
   const [savingProps, setSavingProps] = useState(false);
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkForm] = Form.useForm();
   const [bulkEnabled, setBulkEnabled] = useState<Record<string, boolean>>({});
-  const [bulkPropsJson, setBulkPropsJson] = useState('{}');
+  const [bulkPropsForm] = Form.useForm();
+  const [bulkPropsEnabled, setBulkPropsEnabled] = useState<Record<string, boolean>>({});
   const [savingBulk, setSavingBulk] = useState(false);
 
   const queryKey = ['schema-detail', schema] as const;
@@ -70,7 +72,7 @@ function TablesPanel({ schema }: { schema: string }) {
       .then((res: any) => {
         const rels = res?.relations ?? {};
         const meta: Record<string, TableMeta> = {};
-        const props: Record<string, string> = {};
+        const props: Record<string, Record<string, any>> = {};
         for (const t of tables) {
           const key = `${schema}.${t.name}`;
           const m = rels[key] ?? {};
@@ -81,7 +83,7 @@ function TablesPanel({ schema }: { schema: string }) {
             sort_id: m.sort_id ?? null,
             tags: m.tags ?? [],
           };
-          props[t.name] = JSON.stringify(m.properties ?? {}, null, 2);
+          props[t.name] = m.properties ?? {};
         }
         setTablesMeta(meta);
         setTablesProps(props);
@@ -137,18 +139,17 @@ function TablesPanel({ schema }: { schema: string }) {
   };
 
   const openPropsModal = (tableName: string) => {
-    setPropsJson(tablesProps[tableName] ?? '{}');
+    propsForm.setFieldsValue(tablesProps[tableName] ?? {});
     setPropsModal(tableName);
   };
 
   const saveProps = async () => {
     if (!propsModal) return;
-    let properties: object;
-    try {
-      properties = JSON.parse(propsJson);
-    } catch {
-      message.error('Invalid JSON');
-      return;
+    const properties = propsForm.getFieldsValue();
+    // Strip undefined/null values
+    const cleaned: Record<string, any> = {};
+    for (const [k, v] of Object.entries(properties)) {
+      if (v !== undefined && v !== null && v !== '') cleaned[k] = v;
     }
     const qualifiedName = `${schema}.${propsModal}`;
     setSavingProps(true);
@@ -156,7 +157,7 @@ function TablesPanel({ schema }: { schema: string }) {
       await getAdminClient().provisioning.metadata.patchMetaData({
         relations: {
           [qualifiedName]: {
-            properties: Object.keys(properties).length ? properties : null,
+            properties: Object.keys(cleaned).length ? cleaned : null,
           },
         },
       }).catch((e: any) => {
@@ -164,7 +165,7 @@ function TablesPanel({ schema }: { schema: string }) {
         throw e;
       });
       message.success(`Properties for "${propsModal}" updated`);
-      setTablesProps((prev) => ({ ...prev, [propsModal]: propsJson }));
+      setTablesProps((prev) => ({ ...prev, [propsModal]: cleaned }));
       setPropsModal(null);
     } catch (e: unknown) {
       message.error(getErrorMessage(e));
@@ -175,26 +176,29 @@ function TablesPanel({ schema }: { schema: string }) {
 
   const openBulkModal = () => {
     bulkForm.resetFields();
+    bulkPropsForm.resetFields();
     setBulkEnabled({});
-    setBulkPropsJson('{}');
+    setBulkPropsEnabled({});
     setBulkOpen(true);
   };
 
   const saveBulk = async () => {
     const values = bulkForm.getFieldsValue();
     const enabledKeys = Object.entries(bulkEnabled).filter(([, v]) => v).map(([k]) => k);
-    if (!enabledKeys.length) {
+    const enabledPropKeys = Object.entries(bulkPropsEnabled).filter(([, v]) => v).map(([k]) => k);
+
+    if (!enabledKeys.length && !enabledPropKeys.length) {
       message.warning('No fields selected');
       return;
     }
 
-    let properties: object | undefined;
-    if (enabledKeys.includes('properties')) {
-      try {
-        properties = JSON.parse(bulkPropsJson);
-      } catch {
-        message.error('Invalid JSON in properties');
-        return;
+    let properties: Record<string, any> | undefined;
+    if (enabledPropKeys.length) {
+      const propValues = bulkPropsForm.getFieldsValue();
+      properties = {};
+      for (const key of enabledPropKeys) {
+        const v = propValues[key];
+        if (v !== undefined && v !== null && v !== '') properties[key] = v;
       }
     }
 
@@ -207,7 +211,12 @@ function TablesPanel({ schema }: { schema: string }) {
         if (key === 'group') patch.group = values.group || null;
         if (key === 'sort_id') patch.sort_id = values.sort_id ?? null;
         if (key === 'tags') patch.tags = values.tags?.length ? values.tags : null;
-        if (key === 'properties') patch.properties = Object.keys(properties!).length ? properties : null;
+      }
+      if (properties !== undefined) {
+        // Merge with existing properties for each table
+        const existing = tablesProps[tableName] ?? {};
+        patch.properties = { ...existing, ...properties };
+        if (!Object.keys(patch.properties).length) patch.properties = null;
       }
       relations[`${schema}.${tableName}`] = patch;
     }
@@ -377,7 +386,9 @@ function TablesPanel({ schema }: { schema: string }) {
         width={600}
         destroyOnClose
       >
-        <CodeEditor value={propsJson} onChange={setPropsJson} language="json" height="300px" />
+        <div style={{ maxHeight: 500, overflowY: 'auto', paddingRight: 8 }}>
+          <SchemaForm schema={testPropertiesSchema} form={propsForm} />
+        </div>
       </Modal>
       <Modal
         title={`Bulk Edit Metadata (${selectedRows.length} tables)`}
@@ -409,13 +420,17 @@ function TablesPanel({ schema }: { schema: string }) {
             <Select mode="tags" placeholder="Tags" disabled={!bulkEnabled.tags} />
           </Form.Item>
         </Form>
-        <div style={{ marginTop: 8 }}>
-          <Checkbox checked={!!bulkEnabled.properties} onChange={(e) => setBulkEnabled((p) => ({ ...p, properties: e.target.checked }))}>
-            Properties
-          </Checkbox>
-          <div style={{ marginTop: 8, opacity: bulkEnabled.properties ? 1 : 0.4, pointerEvents: bulkEnabled.properties ? 'auto' : 'none' }}>
-            <CodeEditor value={bulkPropsJson} onChange={setBulkPropsJson} language="json" height="200px" />
-          </div>
+        <div style={{ marginTop: 16, borderTop: '1px solid #f0f0f0', paddingTop: 16 }}>
+          <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>Properties</Typography.Text>
+          <p style={{ marginBottom: 12, color: '#888', fontSize: 13 }}>
+            Only checked property fields will be applied to the selected tables.
+          </p>
+          <SchemaForm
+            schema={testPropertiesSchema}
+            form={bulkPropsForm}
+            enabledFields={bulkPropsEnabled}
+            onEnabledChange={setBulkPropsEnabled}
+          />
         </div>
       </Modal>
       <Drawer title="Create Table" open={createOpen} onClose={() => setCreateOpen(false)} width={400}

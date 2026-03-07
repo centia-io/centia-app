@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Button, Spin, message } from 'antd';
+import { Button, Form, Spin, message } from 'antd';
 import { SaveOutlined } from '@ant-design/icons';
 import { getMeta } from '../../baas/client';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
-import CodeEditor from '../../components/CodeEditor';
+import SchemaForm from '../../components/SchemaForm';
+import { testPropertiesSchema } from '../../data/testPropertiesSchema';
 
 interface Props {
   schema: string;
@@ -11,7 +12,7 @@ interface Props {
 }
 
 export default function MetadataManager({ schema, table }: Props) {
-  const [propsJson, setPropsJson] = useState('{}');
+  const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -22,21 +23,19 @@ export default function MetadataManager({ schema, table }: Props) {
     getMeta().query(qualifiedName)
       .then((res: any) => {
         const meta = res?.relations?.[qualifiedName] ?? res?.[qualifiedName] ?? {};
-        setPropsJson(JSON.stringify(meta.properties ?? {}, null, 2));
+        form.setFieldsValue(meta.properties ?? {});
       })
       .catch(() => {
-        setPropsJson('{}');
+        form.resetFields();
       })
       .finally(() => setLoading(false));
-  }, [schema, table, qualifiedName]);
+  }, [schema, table, qualifiedName, form]);
 
   const save = async () => {
-    let properties: object;
-    try {
-      properties = JSON.parse(propsJson);
-    } catch {
-      message.error('Invalid JSON in properties');
-      return;
+    const values = form.getFieldsValue();
+    const properties: Record<string, any> = {};
+    for (const [k, v] of Object.entries(values)) {
+      if (v !== undefined && v !== null && v !== '') properties[k] = v;
     }
 
     setSaving(true);
@@ -63,8 +62,7 @@ export default function MetadataManager({ schema, table }: Props) {
 
   return (
     <div style={{ maxWidth: 720 }}>
-      <p>Properties (JSON)</p>
-      <CodeEditor value={propsJson} onChange={setPropsJson} language="json" height="300px" />
+      <SchemaForm schema={testPropertiesSchema} form={form} />
       <Button type="primary" icon={<SaveOutlined />} onClick={save} loading={saving} style={{ marginTop: 12 }}>
         Save Properties
       </Button>

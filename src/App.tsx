@@ -1,11 +1,12 @@
 import { Suspense } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import { ConfigProvider, Spin, Flex } from 'antd';
+import { ConfigProvider, Spin, Flex, theme } from 'antd';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './auth/AuthProvider';
 import { routes } from './routes';
 import { queryClient, initPersistence } from './data/queryClient';
 import OfflineBanner from './components/OfflineBanner';
+import { ThemeProvider, useTheme } from './theme/ThemeProvider';
 
 // Initialize IndexedDB persistence if VITE_CLIENT_FIRST_PERSIST=true
 initPersistence();
@@ -18,17 +19,31 @@ const Loading = () => (
   </Flex>
 );
 
+function ThemedApp() {
+  const { resolved } = useTheme();
+  return (
+    <ConfigProvider
+      theme={{
+        algorithm: resolved === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
+        token: { colorPrimary: '#1677ff' },
+      }}
+    >
+      <AuthProvider>
+        <OfflineBanner />
+        <Suspense fallback={<Loading />}>
+          <RouterProvider router={router} />
+        </Suspense>
+      </AuthProvider>
+    </ConfigProvider>
+  );
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ConfigProvider theme={{ token: { colorPrimary: '#1677ff' } }}>
-        <AuthProvider>
-          <OfflineBanner />
-          <Suspense fallback={<Loading />}>
-            <RouterProvider router={router} />
-          </Suspense>
-        </AuthProvider>
-      </ConfigProvider>
+      <ThemeProvider>
+        <ThemedApp />
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
