@@ -27,12 +27,13 @@ export default function LoginPage() {
   return (
     <Flex justify="center" align="center" style={{ minHeight: '100vh', background: '#f0f2f5' }}>
       <Card style={{ width: 360, textAlign: 'center' }}>
-        <Typography.Title level={3}>Centia Admin</Typography.Title>
+        <img src="https://centia.io/img/centia-logo-dark.svg" alt="Centia.io" style={{ height: 40, marginBottom: 16 }} />
+        <Typography.Title level={3}>Centia.io Admin</Typography.Title>
         <Typography.Paragraph type="secondary">
-          Log in to manage your Centia BaaS instance
+          Log in to manage your Centia.io BaaS instance
         </Typography.Paragraph>
         <Button type="primary" size="large" icon={<LoginOutlined />} onClick={signIn}>
-          Login with Centia
+          Login with Centia.io
         </Button>
       </Card>
     </Flex>
