@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Drawer, Form, Input, Select, Switch, Button, message } from 'antd';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
 
@@ -17,12 +18,18 @@ interface Props {
   table: string;
   column?: any;
   onClose: () => void;
-  onDone: () => void;
+  onDone: (nameChanged: boolean) => void;
 }
 
 export default function ColumnFormDrawer({ open, schema, table, column, onClose, onDone }: Props) {
   const [form] = Form.useForm();
   const isEdit = !!column;
+
+  useEffect(() => {
+    if (open) {
+      form.setFieldsValue(column ?? { name: '', type: '', is_nullable: true, default_value: '', comment: '' });
+    }
+  }, [open, column, form]);
 
   const handleSubmit = async () => {
     const values = await form.validateFields();
@@ -34,9 +41,10 @@ export default function ColumnFormDrawer({ open, schema, table, column, onClose,
       } else {
         await admin.provisioning.columns.postColumn(schema, table, values);
       }
+      const nameChanged = isEdit ? values.name !== column.name : true;
       message.success(isEdit ? 'Column updated' : 'Column created');
       form.resetFields();
-      onDone();
+      onDone(nameChanged);
     } catch (e: unknown) {
       message.error(getErrorMessage(e));
     }

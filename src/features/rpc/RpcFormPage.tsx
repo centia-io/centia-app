@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Form, Input, Select, Button, Space, Spin, message } from 'antd';
+import { ArrowLeftOutlined } from '@ant-design/icons';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
 import { queryClient } from '../../data/queryClient';
 import CodeEditor from '../../components/CodeEditor';
@@ -48,6 +49,9 @@ export default function RpcFormPage() {
 
   return (
     <div>
+      <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate('/rpc')} style={{ marginBottom: 8 }}>
+        RPC Methods
+      </Button>
       <h2>{isNew ? 'New RPC Method' : `Edit: ${method}`}</h2>
       <Form form={form} layout="vertical" style={{ maxWidth: 800 }}
         initialValues={{ output_format: 'json' }}>

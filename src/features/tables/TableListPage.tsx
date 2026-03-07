@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Table, Button, Space, Drawer, Form, Input, Select, Spin, Alert, Tabs, message } from 'antd';
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Table, Button, Space, Drawer, Modal, Form, Input, InputNumber, Select, Checkbox, Spin, Alert, Tabs, message } from 'antd';
+import { PlusOutlined, DeleteOutlined, ArrowLeftOutlined, SaveOutlined, CodeOutlined, EditOutlined } from '@ant-design/icons';
+import CodeEditor from '../../components/CodeEditor';
+import { getMeta } from '../../baas/client';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
 import { confirmDelete } from '../../components/ConfirmDelete';
 import { useQuery } from '@tanstack/react-query';
@@ -15,6 +17,14 @@ type SchemaDetailResponse = {
   tables?: Array<{ name: string; columns?: unknown[] }>;
 };
 
+interface TableMeta {
+  title: string;
+  abstract: string;
+  group: string;
+  sort_id: number | null;
+  tags: string[];
+}
+
 // ──── Tables ────
 
 function TablesPanel({ schema }: { schema: string }) {
@@ -23,6 +33,19 @@ function TablesPanel({ schema }: { schema: string }) {
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [form] = Form.useForm();
+  const [tablesMeta, setTablesMeta] = useState<Record<string, TableMeta>>({});
+  const [dirtyMeta, setDirtyMeta] = useState<Record<string, Partial<TableMeta>>>({});
+  const [savingMeta, setSavingMeta] = useState<string | null>(null);
+  const [tablesProps, setTablesProps] = useState<Record<string, string>>({});
+  const [propsModal, setPropsModal] = useState<string | null>(null);
+  const [propsJson, setPropsJson] = useState('{}');
+  const [savingProps, setSavingProps] = useState(false);
+  const [selectedRows, setSelectedRows] = useState<string[]>([]);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkForm] = Form.useForm();
+  const [bulkEnabled, setBulkEnabled] = useState<Record<string, boolean>>({});
+  const [bulkPropsJson, setBulkPropsJson] = useState('{}');
+  const [savingBulk, setSavingBulk] = useState(false);
 
   const queryKey = ['schema-detail', schema] as const;
 
@@ -39,6 +62,177 @@ function TablesPanel({ schema }: { schema: string }) {
       name: t.name,
       columnCount: t.columns?.length ?? 0,
     })) ?? [];
+
+  const fetchMeta = useCallback(() => {
+    if (!tables.length) return;
+    const query = tables.map((t) => `${schema}.${t.name}`).join(',');
+    getMeta().query(query)
+      .then((res: any) => {
+        const rels = res?.relations ?? {};
+        const meta: Record<string, TableMeta> = {};
+        const props: Record<string, string> = {};
+        for (const t of tables) {
+          const key = `${schema}.${t.name}`;
+          const m = rels[key] ?? {};
+          meta[t.name] = {
+            title: m.title ?? '',
+            abstract: m.abstract ?? '',
+            group: m.group ?? '',
+            sort_id: m.sort_id ?? null,
+            tags: m.tags ?? [],
+          };
+          props[t.name] = JSON.stringify(m.properties ?? {}, null, 2);
+        }
+        setTablesMeta(meta);
+        setTablesProps(props);
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [schema, tables.length]);
+
+  useEffect(() => { fetchMeta(); }, [fetchMeta]);
+
+  const updateDirty = (tableName: string, key: keyof TableMeta, value: any) => {
+    setDirtyMeta((prev) => ({
+      ...prev,
+      [tableName]: { ...prev[tableName], [key]: value },
+    }));
+  };
+
+  const saveMeta = async (tableName: string) => {
+    const current = tablesMeta[tableName] ?? { title: '', abstract: '', group: '', sort_id: null, tags: [] };
+    const changes = dirtyMeta[tableName];
+    if (!changes) return;
+
+    const merged = { ...current, ...changes };
+    const qualifiedName = `${schema}.${tableName}`;
+    setSavingMeta(tableName);
+    try {
+      await getAdminClient().provisioning.metadata.patchMetaData({
+        relations: {
+          [qualifiedName]: {
+            title: merged.title || null,
+            abstract: merged.abstract || null,
+            group: merged.group || null,
+            sort_id: merged.sort_id,
+            tags: merged.tags?.length ? merged.tags : null,
+          },
+        },
+      }).catch((e: any) => {
+        if (e?.status === 204) return;
+        throw e;
+      });
+      message.success(`Metadata for "${tableName}" updated`);
+      setTablesMeta((prev) => ({ ...prev, [tableName]: merged }));
+      setDirtyMeta((prev) => {
+        const next = { ...prev };
+        delete next[tableName];
+        return next;
+      });
+    } catch (e: unknown) {
+      message.error(getErrorMessage(e));
+    } finally {
+      setSavingMeta(null);
+    }
+  };
+
+  const openPropsModal = (tableName: string) => {
+    setPropsJson(tablesProps[tableName] ?? '{}');
+    setPropsModal(tableName);
+  };
+
+  const saveProps = async () => {
+    if (!propsModal) return;
+    let properties: object;
+    try {
+      properties = JSON.parse(propsJson);
+    } catch {
+      message.error('Invalid JSON');
+      return;
+    }
+    const qualifiedName = `${schema}.${propsModal}`;
+    setSavingProps(true);
+    try {
+      await getAdminClient().provisioning.metadata.patchMetaData({
+        relations: {
+          [qualifiedName]: {
+            properties: Object.keys(properties).length ? properties : null,
+          },
+        },
+      }).catch((e: any) => {
+        if (e?.status === 204) return;
+        throw e;
+      });
+      message.success(`Properties for "${propsModal}" updated`);
+      setTablesProps((prev) => ({ ...prev, [propsModal]: propsJson }));
+      setPropsModal(null);
+    } catch (e: unknown) {
+      message.error(getErrorMessage(e));
+    } finally {
+      setSavingProps(false);
+    }
+  };
+
+  const openBulkModal = () => {
+    bulkForm.resetFields();
+    setBulkEnabled({});
+    setBulkPropsJson('{}');
+    setBulkOpen(true);
+  };
+
+  const saveBulk = async () => {
+    const values = bulkForm.getFieldsValue();
+    const enabledKeys = Object.entries(bulkEnabled).filter(([, v]) => v).map(([k]) => k);
+    if (!enabledKeys.length) {
+      message.warning('No fields selected');
+      return;
+    }
+
+    let properties: object | undefined;
+    if (enabledKeys.includes('properties')) {
+      try {
+        properties = JSON.parse(bulkPropsJson);
+      } catch {
+        message.error('Invalid JSON in properties');
+        return;
+      }
+    }
+
+    const relations: Record<string, any> = {};
+    for (const tableName of selectedRows) {
+      const patch: Record<string, any> = {};
+      for (const key of enabledKeys) {
+        if (key === 'title') patch.title = values.title || null;
+        if (key === 'abstract') patch.abstract = values.abstract || null;
+        if (key === 'group') patch.group = values.group || null;
+        if (key === 'sort_id') patch.sort_id = values.sort_id ?? null;
+        if (key === 'tags') patch.tags = values.tags?.length ? values.tags : null;
+        if (key === 'properties') patch.properties = Object.keys(properties!).length ? properties : null;
+      }
+      relations[`${schema}.${tableName}`] = patch;
+    }
+
+    setSavingBulk(true);
+    try {
+      await getAdminClient().provisioning.metadata.patchMetaData({ relations }).catch((e: any) => {
+        if (e?.status === 204) return;
+        throw e;
+      });
+      message.success(`Metadata updated for ${selectedRows.length} tables`);
+      setBulkOpen(false);
+      setSelectedRows([]);
+      fetchMeta();
+    } catch (e: unknown) {
+      message.error(getErrorMessage(e));
+    } finally {
+      setSavingBulk(false);
+    }
+  };
+
+  const getMetaValue = (tableName: string, key: keyof TableMeta) => {
+    if (dirtyMeta[tableName] && key in dirtyMeta[tableName]) return dirtyMeta[tableName][key];
+    return tablesMeta[tableName]?.[key] ?? (key === 'tags' ? [] : key === 'sort_id' ? null : '');
+  };
 
   const handleCreate = async () => {
     const values = await form.validateFields();
@@ -85,28 +279,145 @@ function TablesPanel({ schema }: { schema: string }) {
   return (
     <div>
       <Space style={{ marginBottom: 16, justifyContent: 'flex-end', width: '100%' }}>
+        {selectedRows.length > 0 && (
+          <Button icon={<EditOutlined />} onClick={openBulkModal}>
+            Edit Metadata ({selectedRows.length})
+          </Button>
+        )}
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>New Table</Button>
       </Space>
       <Input.Search placeholder="Search tables..." allowClear onChange={(e) => setSearch(e.target.value)} style={{ marginBottom: 12, maxWidth: 300 }} />
       <Table
         dataSource={tables.filter((r) => !search || r.name.toLowerCase().includes(search.toLowerCase()))}
         rowKey="name"
+        size="small"
         pagination={false}
+        rowSelection={{
+          selectedRowKeys: selectedRows,
+          onChange: (keys) => setSelectedRows(keys as string[]),
+        }}
         columns={[
-          { title: 'Name', dataIndex: 'name', key: 'name',
+          { title: 'Name', dataIndex: 'name', key: 'name', width: 160,
             sorter: (a, b) => a.name.localeCompare(b.name),
             render: (name: string) => <a onClick={() => navigate(`/schemas/${schema}/tables/${name}`)}>{name}</a>,
           },
-          { title: 'Columns', dataIndex: 'columnCount', key: 'columnCount',
+          { title: 'Columns', dataIndex: 'columnCount', key: 'columnCount', width: 80,
             sorter: (a, b) => a.columnCount - b.columnCount,
+          },
+          { title: 'Title', key: 'title', width: 150,
+            render: (_: unknown, record: any) => (
+              <Input size="small" placeholder="—"
+                value={(getMetaValue(record.name, 'title') as string) ?? ''}
+                onChange={(e) => updateDirty(record.name, 'title', e.target.value)}
+              />
+            ),
+          },
+          { title: 'Abstract', key: 'abstract', width: 180,
+            render: (_: unknown, record: any) => (
+              <Input size="small" placeholder="—"
+                value={(getMetaValue(record.name, 'abstract') as string) ?? ''}
+                onChange={(e) => updateDirty(record.name, 'abstract', e.target.value)}
+              />
+            ),
+          },
+          { title: 'Group', key: 'group', width: 120,
+            render: (_: unknown, record: any) => (
+              <Input size="small" placeholder="—"
+                value={(getMetaValue(record.name, 'group') as string) ?? ''}
+                onChange={(e) => updateDirty(record.name, 'group', e.target.value)}
+              />
+            ),
+          },
+          { title: 'Sort ID', key: 'sort_id', width: 80,
+            render: (_: unknown, record: any) => (
+              <InputNumber size="small" placeholder="—"
+                value={getMetaValue(record.name, 'sort_id') as number | null}
+                onChange={(v) => updateDirty(record.name, 'sort_id', v)}
+                style={{ width: '100%' }}
+              />
+            ),
+          },
+          { title: 'Tags', key: 'tags', width: 160,
+            render: (_: unknown, record: any) => (
+              <Select size="small" mode="tags" placeholder="—" style={{ width: '100%' }}
+                value={(getMetaValue(record.name, 'tags') as string[]) ?? []}
+                onChange={(v) => updateDirty(record.name, 'tags', v)}
+              />
+            ),
+          },
+          { title: 'Properties', key: 'properties', width: 90, align: 'center' as const,
+            render: (_: unknown, record: any) => (
+              <Button size="small" icon={<CodeOutlined />} onClick={() => openPropsModal(record.name)}>
+                Edit
+              </Button>
+            ),
           },
           { title: 'Actions', key: 'actions', width: 100,
             render: (_: unknown, record: any) => (
-              <Button size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record.name)} />
+              <Space>
+                {dirtyMeta[record.name] && (
+                  <Button size="small" type="primary" icon={<SaveOutlined />}
+                    loading={savingMeta === record.name}
+                    onClick={() => saveMeta(record.name)}
+                  />
+                )}
+                <Button size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record.name)} />
+              </Space>
             ),
           },
         ]}
       />
+      <Modal
+        title={`Properties — ${propsModal}`}
+        open={!!propsModal}
+        onCancel={() => setPropsModal(null)}
+        onOk={saveProps}
+        confirmLoading={savingProps}
+        okText="Save"
+        width={600}
+        destroyOnClose
+      >
+        <CodeEditor value={propsJson} onChange={setPropsJson} language="json" height="300px" />
+      </Modal>
+      <Modal
+        title={`Bulk Edit Metadata (${selectedRows.length} tables)`}
+        open={bulkOpen}
+        onCancel={() => setBulkOpen(false)}
+        onOk={saveBulk}
+        confirmLoading={savingBulk}
+        okText="Apply"
+        width={600}
+        destroyOnClose
+      >
+        <p style={{ marginBottom: 16, color: '#888' }}>
+          Only checked fields will be applied. Unchecked fields remain unchanged.
+        </p>
+        <Form form={bulkForm} layout="vertical">
+          <Form.Item label={<Checkbox checked={!!bulkEnabled.title} onChange={(e) => setBulkEnabled((p) => ({ ...p, title: e.target.checked }))}>Title</Checkbox>} name="title">
+            <Input placeholder="Title" disabled={!bulkEnabled.title} />
+          </Form.Item>
+          <Form.Item label={<Checkbox checked={!!bulkEnabled.abstract} onChange={(e) => setBulkEnabled((p) => ({ ...p, abstract: e.target.checked }))}>Abstract</Checkbox>} name="abstract">
+            <Input.TextArea rows={2} placeholder="Abstract" disabled={!bulkEnabled.abstract} />
+          </Form.Item>
+          <Form.Item label={<Checkbox checked={!!bulkEnabled.group} onChange={(e) => setBulkEnabled((p) => ({ ...p, group: e.target.checked }))}>Group</Checkbox>} name="group">
+            <Input placeholder="Group" disabled={!bulkEnabled.group} />
+          </Form.Item>
+          <Form.Item label={<Checkbox checked={!!bulkEnabled.sort_id} onChange={(e) => setBulkEnabled((p) => ({ ...p, sort_id: e.target.checked }))}>Sort ID</Checkbox>} name="sort_id">
+            <InputNumber style={{ width: '100%' }} placeholder="Sort ID" disabled={!bulkEnabled.sort_id} />
+          </Form.Item>
+          <Form.Item label={<Checkbox checked={!!bulkEnabled.tags} onChange={(e) => setBulkEnabled((p) => ({ ...p, tags: e.target.checked }))}>Tags</Checkbox>} name="tags">
+            <Select mode="tags" placeholder="Tags" disabled={!bulkEnabled.tags} />
+          </Form.Item>
+        </Form>
+        <div style={{ marginTop: 8 }}>
+          <Checkbox checked={!!bulkEnabled.properties} onChange={(e) => setBulkEnabled((p) => ({ ...p, properties: e.target.checked }))}>
+            Properties
+          </Checkbox>
+          <div style={{ marginTop: 8, opacity: bulkEnabled.properties ? 1 : 0.4, pointerEvents: bulkEnabled.properties ? 'auto' : 'none' }}>
+            <CodeEditor value={bulkPropsJson} onChange={setBulkPropsJson} language="json" height="200px" />
+          </div>
+        </div>
+      </Modal>
       <Drawer title="Create Table" open={createOpen} onClose={() => setCreateOpen(false)} width={400}
         extra={<Button type="primary" onClick={handleCreate} loading={saving}>Save</Button>}>
         <Form form={form} layout="vertical">
@@ -224,9 +535,13 @@ function SequencesPanel({ schema }: { schema: string }) {
 
 export default function TableListPage() {
   const { s: schema } = useParams<{ s: string }>();
+  const navigate = useNavigate();
 
   return (
     <div>
+      <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate('/schemas')} style={{ marginBottom: 8 }}>
+        Schemas
+      </Button>
       <h2>{schema}</h2>
       <Tabs
         defaultActiveKey="tables"

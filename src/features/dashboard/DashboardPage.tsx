@@ -11,21 +11,21 @@ export default function DashboardPage() {
     staleTime: 30_000,
   });
 
-  const stat = data?.stat;
-
   const schemaMap = useMemo(() => {
     const map = new Map<string, { tables: any[]; totalBytes: number }>();
-    for (const t of stat?.tables ?? []) {
+    for (const t of (data as any)?.tables ?? []) {
       const entry = map.get(t.schema_name) ?? { tables: [], totalBytes: 0 };
       entry.tables.push(t);
       entry.totalBytes += t.total_size_bytes ?? 0;
       map.set(t.schema_name, entry);
     }
     return map;
-  }, [stat]);
+  }, [data]);
 
   if (isLoading) return <Spin />;
   if (error) return <Alert type="error" message={String(error)} />;
+
+  const stats = data as any;
 
   return (
     <div>
@@ -35,10 +35,10 @@ export default function DashboardPage() {
           <Card><Statistic title="Schemas" value={schemaMap.size} prefix={<DatabaseOutlined />} /></Card>
         </Col>
         <Col span={8}>
-          <Card><Statistic title="Tables" value={stat?.number_of_tables ?? 0} prefix={<TableOutlined />} /></Card>
+          <Card><Statistic title="Tables" value={stats?.number_of_tables ?? 0} prefix={<TableOutlined />} /></Card>
         </Col>
         <Col span={8}>
-          <Card><Statistic title="Database Size" value={stat?.total_size ?? 'N/A'} prefix={<HddOutlined />} /></Card>
+          <Card><Statistic title="Database Size" value={stats?.total_size ?? 'N/A'} prefix={<HddOutlined />} /></Card>
         </Col>
       </Row>
       {schemaMap.size > 0 && (

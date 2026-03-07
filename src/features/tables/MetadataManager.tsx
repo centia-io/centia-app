@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Form, Input, InputNumber, Button, Spin, message, Select } from 'antd';
+import { Button, Spin, message } from 'antd';
 import { SaveOutlined } from '@ant-design/icons';
 import { getMeta } from '../../baas/client';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
@@ -11,7 +11,6 @@ interface Props {
 }
 
 export default function MetadataManager({ schema, table }: Props) {
-  const [form] = Form.useForm();
   const [propsJson, setPropsJson] = useState('{}');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -23,22 +22,13 @@ export default function MetadataManager({ schema, table }: Props) {
     getMeta().query(qualifiedName)
       .then((res: any) => {
         const meta = res?.relations?.[qualifiedName] ?? res?.[qualifiedName] ?? {};
-        form.setFieldsValue({
-          title: meta.title ?? '',
-          abstract: meta.abstract ?? '',
-          group: meta.group ?? '',
-          sort_id: meta.sort_id ?? null,
-          tags: meta.tags ?? [],
-        });
         setPropsJson(JSON.stringify(meta.properties ?? {}, null, 2));
       })
       .catch(() => {
-        // No metadata yet — start with empty defaults
-        form.resetFields();
         setPropsJson('{}');
       })
       .finally(() => setLoading(false));
-  }, [schema, table, qualifiedName, form]);
+  }, [schema, table, qualifiedName]);
 
   const save = async () => {
     let properties: object;
@@ -51,23 +41,17 @@ export default function MetadataManager({ schema, table }: Props) {
 
     setSaving(true);
     try {
-      const values = form.getFieldsValue();
-      const payload: Record<string, any> = {};
-      if (Object.keys(properties).length) payload.properties = properties;
-      if (values.title) payload.title = values.title;
-      if (values.abstract) payload.abstract = values.abstract;
-      if (values.group) payload.group = values.group;
-      if (values.sort_id != null) payload.sort_id = values.sort_id;
-      if (values.tags?.length) payload.tags = values.tags;
-
       await getAdminClient().provisioning.metadata.patchMetaData({
-        relations: { [qualifiedName]: payload },
+        relations: {
+          [qualifiedName]: {
+            properties: Object.keys(properties).length ? properties : null,
+          },
+        },
       }).catch((e: any) => {
-        // SDK may reject on 204 No Content — that is a success
         if (e?.status === 204) return;
         throw e;
       });
-      message.success('Metadata updated');
+      message.success('Properties updated');
     } catch (e: unknown) {
       message.error(getErrorMessage(e));
     } finally {
@@ -78,30 +62,12 @@ export default function MetadataManager({ schema, table }: Props) {
   if (loading) return <Spin />;
 
   return (
-    <Form form={form} layout="vertical" style={{ maxWidth: 720 }}>
-      <Form.Item label="Title" name="title">
-        <Input placeholder="Human-readable title" />
-      </Form.Item>
-      <Form.Item label="Abstract" name="abstract">
-        <Input.TextArea rows={2} placeholder="Description or summary" />
-      </Form.Item>
-      <Form.Item label="Group" name="group">
-        <Input placeholder="Logical grouping" />
-      </Form.Item>
-      <Form.Item label="Sort ID" name="sort_id">
-        <InputNumber style={{ width: '100%' }} placeholder="Sorting weight" />
-      </Form.Item>
-      <Form.Item label="Tags" name="tags">
-        <Select mode="tags" placeholder="Add tags" />
-      </Form.Item>
-      <Form.Item label="Properties">
-        <CodeEditor value={propsJson} onChange={setPropsJson} language="json" height="240px" />
-      </Form.Item>
-      <Form.Item>
-        <Button type="primary" icon={<SaveOutlined />} onClick={save} loading={saving}>
-          Save Metadata
-        </Button>
-      </Form.Item>
-    </Form>
+    <div style={{ maxWidth: 720 }}>
+      <p>Properties (JSON)</p>
+      <CodeEditor value={propsJson} onChange={setPropsJson} language="json" height="300px" />
+      <Button type="primary" icon={<SaveOutlined />} onClick={save} loading={saving} style={{ marginTop: 12 }}>
+        Save Properties
+      </Button>
+    </div>
   );
 }

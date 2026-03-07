@@ -1,5 +1,6 @@
-import { useParams } from 'react-router-dom';
-import { Tabs, Spin, Alert, Descriptions } from 'antd';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Tabs, Spin, Alert, Button, Descriptions } from 'antd';
+import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { queryClient } from '../../data/queryClient';
 import { getAdminClient } from '../../baas/adminClient';
@@ -8,10 +9,10 @@ import ColumnEditor from './ColumnEditor';
 import ConstraintManager from './ConstraintManager';
 import IndexManager from './IndexManager';
 import PrivilegeManager from './PrivilegeManager';
-import MetadataManager from './MetadataManager';
 
 export default function TableDetailPage() {
   const { s: schema, t: table } = useParams<{ s: string; t: string }>();
+  const navigate = useNavigate();
 
   const queryKey = ['table-detail', schema, table] as const;
 
@@ -34,6 +35,9 @@ export default function TableDetailPage() {
 
   return (
     <div>
+      <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate(`/schemas/${schema}`)} style={{ marginBottom: 8 }}>
+        {schema}
+      </Button>
       <h2>{schema}.{table}</h2>
       {tableData?.comment && (
         <Descriptions size="small" style={{ marginBottom: 16 }}>
@@ -52,9 +56,6 @@ export default function TableDetailPage() {
         },
         { key: 'privileges', label: 'Privileges',
           children: <PrivilegeManager schema={schema!} table={table!} />,
-        },
-        { key: 'metadata', label: 'Metadata',
-          children: <MetadataManager schema={schema!} table={table!} />,
         },
         { key: 'data', label: 'Data',
           children: <DataEditor schema={schema!} table={table!} columns={columns} constraints={constraints} />,
