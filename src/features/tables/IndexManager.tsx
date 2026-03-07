@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Table, Button, Tag, message } from 'antd';
+import { Table, Button, Input, Tag, message } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
 import { confirmDelete } from '../../components/ConfirmDelete';
@@ -14,17 +14,21 @@ interface Props {
 }
 
 export default function IndexManager({ schema, table, indices, columns, onRefresh }: Props) {
-  const [modalOpen, setModalOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState('');
 
   const handleCreate = async (values: any) => {
-    const admin = getAdminClient();
+    setSaving(true);
     try {
-      await admin.provisioning.indices.postIndex(schema, table, values);
+      await getAdminClient().provisioning.indices.postIndex(schema, table, values);
       message.success('Index created');
-      setModalOpen(false);
+      setDrawerOpen(false);
       onRefresh();
     } catch (e: unknown) {
       message.error(getErrorMessage(e));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -43,16 +47,21 @@ export default function IndexManager({ schema, table, indices, columns, onRefres
 
   return (
     <div>
-      <Button icon={<PlusOutlined />} onClick={() => setModalOpen(true)} style={{ marginBottom: 12 }}>
+      <Button icon={<PlusOutlined />} onClick={() => setDrawerOpen(true)} style={{ marginBottom: 12 }}>
         Create Index
       </Button>
+      <Input.Search placeholder="Search indexes..." allowClear onChange={(e) => setSearch(e.target.value)} style={{ marginBottom: 12, maxWidth: 300 }} />
       <Table
-        dataSource={indices}
+        dataSource={indices.filter((r: any) => !search || [r.name, r.method].some((v: string) => (v ?? '').toLowerCase().includes(search.toLowerCase())))}
         rowKey="name"
         size="small"
+        pagination={false}
         columns={[
-          { title: 'Name', dataIndex: 'name', key: 'name' },
+          { title: 'Name', dataIndex: 'name', key: 'name',
+            sorter: (a: any, b: any) => (a.name ?? '').localeCompare(b.name ?? ''),
+          },
           { title: 'Method', dataIndex: 'method', key: 'method',
+            sorter: (a: any, b: any) => (a.method ?? '').localeCompare(b.method ?? ''),
             render: (v: string) => <Tag>{v}</Tag>,
           },
           { title: 'Columns', dataIndex: 'columns', key: 'columns',
@@ -65,7 +74,7 @@ export default function IndexManager({ schema, table, indices, columns, onRefres
           },
         ]}
       />
-      <IndexFormModal open={modalOpen} columns={columns} onOk={handleCreate} onCancel={() => setModalOpen(false)} />
+      <IndexFormModal open={drawerOpen} columns={columns} onOk={handleCreate} onCancel={() => setDrawerOpen(false)} saving={saving} />
     </div>
   );
 }

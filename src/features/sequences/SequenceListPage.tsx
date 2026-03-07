@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Table, Button, Space, Modal, Form, Input, Select, Spin, Alert, message } from 'antd';
+import { Table, Button, Space, Drawer, Form, Input, Select, Spin, Alert, message } from 'antd';
+
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
 import { confirmDelete } from '../../components/ConfirmDelete';
@@ -10,6 +11,8 @@ import { optimisticInsert, optimisticDelete, rollback } from '../../data/optimis
 export default function SequenceListPage() {
   const [schema, setSchema] = useState<string>('');
   const [createOpen, setCreateOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState('');
   const [form] = Form.useForm();
 
   const { data: schemaData, isLoading: schemasLoading } = useQuery({
@@ -35,16 +38,17 @@ export default function SequenceListPage() {
 
   const handleCreate = async () => {
     const values = await form.validateFields();
-    const ctx = optimisticInsert(['sequences', schema], { ...values });
-    form.resetFields();
-    setCreateOpen(false);
+    setSaving(true);
     try {
       await getAdminClient().provisioning.sequences.postSequence(schema, values);
       message.success('Sequence created');
       queryClient.invalidateQueries({ queryKey: ['sequences', schema] });
+      form.resetFields();
+      setCreateOpen(false);
     } catch (e: unknown) {
-      rollback(ctx);
       message.error(getErrorMessage(e));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -81,13 +85,19 @@ export default function SequenceListPage() {
         )}
       </Space>
       {isLoading && schema ? <Spin /> : error ? <Alert type="error" message={String(error)} /> : (
+        <Input.Search placeholder="Search sequences..." allowClear onChange={(e) => setSearch(e.target.value)} style={{ marginBottom: 12, maxWidth: 300 }} />
         <Table
-          dataSource={sequences}
+          dataSource={(sequences as any[]).filter((r) => !search || (r.name ?? '').toLowerCase().includes(search.toLowerCase()))}
           rowKey="name"
           size="small"
+          pagination={false}
           columns={[
-            { title: 'Name', dataIndex: 'name', key: 'name' },
-            { title: 'Data Type', dataIndex: 'data_type', key: 'data_type' },
+            { title: 'Name', dataIndex: 'name', key: 'name',
+              sorter: (a: any, b: any) => (a.name ?? '').localeCompare(b.name ?? ''),
+            },
+            { title: 'Data Type', dataIndex: 'data_type', key: 'data_type',
+              sorter: (a: any, b: any) => (a.data_type ?? '').localeCompare(b.data_type ?? ''),
+            },
             { title: 'Start', dataIndex: 'start_value', key: 'start' },
             { title: 'Increment', dataIndex: 'increment_by', key: 'increment' },
             { title: 'Actions', key: 'actions', width: 80,
@@ -98,7 +108,8 @@ export default function SequenceListPage() {
           ]}
         />
       )}
-      <Modal title="Create Sequence" open={createOpen} onOk={handleCreate} onCancel={() => setCreateOpen(false)}>
+      <Drawer title="Create Sequence" open={createOpen} onClose={() => setCreateOpen(false)} width={400}
+        extra={<Button type="primary" onClick={handleCreate} loading={saving}>Save</Button>}>
         <Form form={form} layout="vertical" initialValues={{ data_type: 'bigint', increment_by: 1 }}>
           <Form.Item name="name" label="Name" rules={[{ required: true }]}>
             <Input />
@@ -117,7 +128,7 @@ export default function SequenceListPage() {
             <Input type="number" />
           </Form.Item>
         </Form>
-      </Modal>
+      </Drawer>
     </div>
   );
 }

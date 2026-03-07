@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Table, Button, Space, Modal, Form, Input, Switch, Spin, Alert, message, Tag } from 'antd';
+import { Table, Button, Space, Drawer, Form, Input, Switch, Spin, Alert, message, Tag } from 'antd';
 import { PlusOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
 import { confirmDelete } from '../../components/ConfirmDelete';
@@ -39,8 +39,12 @@ function ClientForm({ form, isEdit }: { form: ReturnType<typeof Form.useForm>[0]
 
 function clientColumns(onEdit: (r: any) => void, onDelete: (id: string) => void) {
   return [
-    { title: 'ID', dataIndex: 'id', key: 'id' },
-    { title: 'Name', dataIndex: 'name', key: 'name' },
+    { title: 'ID', dataIndex: 'id', key: 'id',
+      sorter: (a: any, b: any) => (a.id ?? '').localeCompare(b.id ?? ''),
+    },
+    { title: 'Name', dataIndex: 'name', key: 'name',
+      sorter: (a: any, b: any) => (a.name ?? '').localeCompare(b.name ?? ''),
+    },
     { title: 'Homepage', dataIndex: 'homepage', key: 'homepage' },
     { title: 'Public', dataIndex: 'public', key: 'public',
       render: (v: boolean) => v ? <Tag color="green">Yes</Tag> : <Tag>No</Tag>,
@@ -66,11 +70,13 @@ function parseRedirectUris(values: any) {
 // ──── Page ────
 
 export default function ClientListPage() {
-  const [modalOpen, setModalOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState('');
   const [editClient, setEditClient] = useState<any>(null);
   const [form] = Form.useForm();
 
-  const { data, isLoading, error, isFetching, isStale } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['clients'],
     queryFn: async () => {
       return await getAdminClient().provisioning.clients.getClient();
@@ -83,12 +89,7 @@ export default function ClientListPage() {
   const handleSave = async () => {
     const values = parseRedirectUris(await form.validateFields());
     const isEdit = !!editClient;
-    const ctx = isEdit
-      ? optimisticUpdate(['clients'], 'id', editClient.id, values)
-      : optimisticInsert(['clients'], { ...values });
-    form.resetFields();
-    setModalOpen(false);
-    setEditClient(null);
+    setSaving(true);
     try {
       if (isEdit) {
         await getAdminClient().provisioning.clients.patchClient(editClient.id, values);
@@ -97,9 +98,13 @@ export default function ClientListPage() {
       }
       message.success(isEdit ? 'Client updated' : 'Client created');
       queryClient.invalidateQueries({ queryKey: ['clients'] });
+      form.resetFields();
+      setDrawerOpen(false);
+      setEditClient(null);
     } catch (e: unknown) {
-      rollback(ctx);
       message.error(getErrorMessage(e));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -123,7 +128,7 @@ export default function ClientListPage() {
       ...record,
       redirect_uri: record.redirect_uri?.join(', ') ?? '',
     });
-    setModalOpen(true);
+    setDrawerOpen(true);
   };
 
   if (isLoading) return <Spin />;
@@ -134,18 +139,18 @@ export default function ClientListPage() {
       <Space style={{ marginBottom: 16, justifyContent: 'space-between', width: '100%' }}>
         <h2>OAuth Clients</h2>
         <Space>
-          <Tag color={isStale ? 'orange' : 'green'}>{isStale ? 'stale' : 'fresh'}</Tag>
-          {isFetching && <Tag color="blue">refetching...</Tag>}
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditClient(null); form.resetFields(); setModalOpen(true); }}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditClient(null); form.resetFields(); setDrawerOpen(true); }}>
             New Client
           </Button>
         </Space>
       </Space>
-      <Table dataSource={clients} rowKey="id" size="small" columns={clientColumns(handleEdit, handleDelete)} />
-      <Modal title={editClient ? 'Edit Client' : 'Create Client'} open={modalOpen}
-        onOk={handleSave} onCancel={() => { setModalOpen(false); setEditClient(null); }} width={600}>
+      <Input.Search placeholder="Search clients..." allowClear onChange={(e) => setSearch(e.target.value)} style={{ marginBottom: 12, maxWidth: 300 }} />
+      <Table dataSource={(clients as any[]).filter((r) => !search || [r.id, r.name].some((v) => (v ?? '').toLowerCase().includes(search.toLowerCase())))} rowKey="id" size="small" pagination={false} columns={clientColumns(handleEdit, handleDelete)} />
+      <Drawer title={editClient ? 'Edit Client' : 'Create Client'} open={drawerOpen}
+        onClose={() => { setDrawerOpen(false); setEditClient(null); }} width={520}
+        extra={<Button type="primary" onClick={handleSave} loading={saving}>Save</Button>}>
         <ClientForm form={form} isEdit={!!editClient} />
-      </Modal>
+      </Drawer>
     </div>
   );
 }

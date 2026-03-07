@@ -1,24 +1,26 @@
-import { Modal, Form, Input, Select } from 'antd';
+import { Drawer, Form, Input, Select, Button } from 'antd';
 
 interface Props {
   open: boolean;
   columns: string[];
   onOk: (values: any) => void;
   onCancel: () => void;
+  saving?: boolean;
 }
 
-export default function ConstraintFormModal({ open, columns, onOk, onCancel }: Props) {
+export default function ConstraintFormModal({ open, columns, onOk, onCancel, saving }: Props) {
   const [form] = Form.useForm();
   const constraintType = Form.useWatch('constraint', form);
 
   const handleOk = async () => {
     const values = await form.validateFields();
     onOk(values);
-    form.resetFields();
   };
 
   return (
-    <Modal title="Add Constraint" open={open} onOk={handleOk} onCancel={onCancel}>
+    <Drawer title="Add Constraint" open={open} onClose={onCancel} width={480}
+      extra={<Button type="primary" onClick={handleOk} loading={saving}>Save</Button>}
+      afterOpenChange={(visible) => { if (!visible) form.resetFields(); }}>
       <Form form={form} layout="vertical" initialValues={{ constraint: 'primary' }}>
         <Form.Item name="constraint" label="Type" rules={[{ required: true }]}>
           <Select options={[
@@ -50,6 +52,6 @@ export default function ConstraintFormModal({ open, columns, onOk, onCancel }: P
           <Input placeholder="Optional" />
         </Form.Item>
       </Form>
-    </Modal>
+    </Drawer>
   );
 }

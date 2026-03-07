@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Form, Input, Select, Button, Space, Spin, message } from 'antd';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
+import { queryClient } from '../../data/queryClient';
 import CodeEditor from '../../components/CodeEditor';
 
 export default function RpcFormPage() {
@@ -36,6 +37,7 @@ export default function RpcFormPage() {
         await admin.provisioning.rpcMethods.patchRpc(method!, { q: sql, output_format: values.output_format });
       }
       message.success(isNew ? 'Method created' : 'Method updated');
+      queryClient.invalidateQueries({ queryKey: ['rpc-methods'] });
       navigate('/rpc');
     } catch (e: unknown) {
       message.error(getErrorMessage(e));

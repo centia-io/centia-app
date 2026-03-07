@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Table, Button, Space, Spin, Alert, message, Tag } from 'antd';
+import { Table, Button, Space, Input, Spin, Alert, message, Tag } from 'antd';
 import { PlusOutlined, DeleteOutlined, PlayCircleOutlined, CodeOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -13,6 +13,7 @@ export default function RpcListPage() {
   const navigate = useNavigate();
   const [callMethod, setCallMethod] = useState<string | null>(null);
   const [typesOpen, setTypesOpen] = useState(false);
+  const [search, setSearch] = useState('');
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['rpc-methods'],
@@ -46,15 +47,19 @@ export default function RpcListPage() {
           <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/rpc/new')}>New Method</Button>
         </Space>
       </Space>
+      <Input.Search placeholder="Search methods..." allowClear onChange={(e) => setSearch(e.target.value)} style={{ marginBottom: 12, maxWidth: 300 }} />
       <Table
-        dataSource={methods}
+        dataSource={methods.filter((r: any) => !search || (r.method ?? '').toLowerCase().includes(search.toLowerCase()))}
         rowKey="method"
         size="small"
+        pagination={false}
         columns={[
           { title: 'Method', dataIndex: 'method', key: 'method',
+            sorter: (a: any, b: any) => (a.method ?? '').localeCompare(b.method ?? ''),
             render: (m: string) => <a onClick={() => navigate(`/rpc/${m}`)}>{m}</a>,
           },
           { title: 'Output Format', dataIndex: 'output_format', key: 'format',
+            sorter: (a: any, b: any) => (a.output_format ?? '').localeCompare(b.output_format ?? ''),
             render: (v: string) => <Tag>{v ?? 'json'}</Tag>,
           },
           { title: 'Actions', key: 'actions', width: 200,

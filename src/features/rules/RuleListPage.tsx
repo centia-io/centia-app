@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Table, Button, Space, Modal, Form, Input, Select, InputNumber, Spin, Alert, message, Tag } from 'antd';
+import { Table, Button, Space, Drawer, Form, Input, InputNumber, Select, Spin, Alert, message, Tag } from 'antd';
 import { PlusOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
 import { confirmDelete } from '../../components/ConfirmDelete';
@@ -58,14 +58,21 @@ function RuleForm({ form }: { form: ReturnType<typeof Form.useForm>[0] }) {
 
 function ruleColumns(onEdit: (r: any) => void, onDelete: (id: number) => void) {
   return [
-    { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
-    { title: 'Priority', dataIndex: 'priority', key: 'priority', width: 80 },
+    { title: 'ID', dataIndex: 'id', key: 'id', width: 60,
+      sorter: (a: any, b: any) => (a.id ?? 0) - (b.id ?? 0),
+    },
+    { title: 'Priority', dataIndex: 'priority', key: 'priority', width: 80,
+      sorter: (a: any, b: any) => (a.priority ?? 0) - (b.priority ?? 0),
+    },
     { title: 'Access', dataIndex: 'access', key: 'access',
+      sorter: (a: any, b: any) => (a.access ?? '').localeCompare(b.access ?? ''),
       render: (v: string) => (
         <Tag color={v === 'allow' ? 'green' : v === 'deny' ? 'red' : 'orange'}>{v}</Tag>
       ),
     },
-    { title: 'Service', dataIndex: 'service', key: 'service' },
+    { title: 'Service', dataIndex: 'service', key: 'service',
+      sorter: (a: any, b: any) => (a.service ?? '').localeCompare(b.service ?? ''),
+    },
     { title: 'Request', dataIndex: 'request', key: 'request' },
     { title: 'Schema', dataIndex: 'schema', key: 'schema' },
     { title: 'Table', dataIndex: 'table', key: 'table' },
@@ -84,11 +91,13 @@ function ruleColumns(onEdit: (r: any) => void, onDelete: (id: number) => void) {
 // ──── Page ────
 
 export default function RuleListPage() {
-  const [modalOpen, setModalOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState('');
   const [editRule, setEditRule] = useState<any>(null);
   const [form] = Form.useForm();
 
-  const { data, isLoading, error, isFetching, isStale } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['rules'],
     queryFn: async () => {
       return await getAdminClient().provisioning.rules.getRule();
@@ -101,12 +110,7 @@ export default function RuleListPage() {
   const handleSave = async () => {
     const values = await form.validateFields();
     const isEdit = !!editRule;
-    const ctx = isEdit
-      ? optimisticUpdate(['rules'], 'id', editRule.id, values)
-      : optimisticInsert(['rules'], { ...values, id: Date.now() });
-    form.resetFields();
-    setModalOpen(false);
-    setEditRule(null);
+    setSaving(true);
     try {
       if (isEdit) {
         await getAdminClient().provisioning.rules.patchRule(editRule.id, values);
@@ -115,9 +119,13 @@ export default function RuleListPage() {
       }
       message.success(isEdit ? 'Rule updated' : 'Rule created');
       queryClient.invalidateQueries({ queryKey: ['rules'] });
+      form.resetFields();
+      setDrawerOpen(false);
+      setEditRule(null);
     } catch (e: unknown) {
-      rollback(ctx);
       message.error(getErrorMessage(e));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -138,7 +146,7 @@ export default function RuleListPage() {
   const handleEdit = (record: any) => {
     setEditRule(record);
     form.setFieldsValue(record);
-    setModalOpen(true);
+    setDrawerOpen(true);
   };
 
   if (isLoading) return <Spin />;
@@ -149,18 +157,18 @@ export default function RuleListPage() {
       <Space style={{ marginBottom: 16, justifyContent: 'space-between', width: '100%' }}>
         <h2>Access Rules</h2>
         <Space>
-          <Tag color={isStale ? 'orange' : 'green'}>{isStale ? 'stale' : 'fresh'}</Tag>
-          {isFetching && <Tag color="blue">refetching...</Tag>}
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditRule(null); form.resetFields(); setModalOpen(true); }}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditRule(null); form.resetFields(); setDrawerOpen(true); }}>
             New Rule
           </Button>
         </Space>
       </Space>
-      <Table dataSource={rules} rowKey="id" size="small" columns={ruleColumns(handleEdit, handleDelete)} />
-      <Modal title={editRule ? 'Edit Rule' : 'Create Rule'} open={modalOpen}
-        onOk={handleSave} onCancel={() => { setModalOpen(false); setEditRule(null); }} width={600}>
+      <Input.Search placeholder="Search rules..." allowClear onChange={(e) => setSearch(e.target.value)} style={{ marginBottom: 12, maxWidth: 300 }} />
+      <Table dataSource={(rules as any[]).filter((r) => !search || [r.access, r.service, r.schema, r.table, r.username].some((v) => (v ?? '').toLowerCase().includes(search.toLowerCase())))} rowKey="id" size="small" pagination={false} columns={ruleColumns(handleEdit, handleDelete)} />
+      <Drawer title={editRule ? 'Edit Rule' : 'Create Rule'} open={drawerOpen}
+        onClose={() => { setDrawerOpen(false); setEditRule(null); }} width={520}
+        extra={<Button type="primary" onClick={handleSave} loading={saving}>Save</Button>}>
         <RuleForm form={form} />
-      </Modal>
+      </Drawer>
     </div>
   );
 }

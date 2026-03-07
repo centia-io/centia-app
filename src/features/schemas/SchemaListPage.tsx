@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Table, Button, Space, Input, Modal, Form, Spin, Alert, message } from 'antd';
+import { Table, Button, Space, Input, Drawer, Form, Spin, Alert, message } from 'antd';
 import { PlusOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
@@ -37,8 +37,12 @@ export default function SchemaListPage() {
     tableCount: s.tables?.length ?? 0,
   }));
 
+  const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState('');
+
   const handleCreate = async () => {
     const values = await form.validateFields();
+    setSaving(true);
     try {
       schemaCollection.insert({ name: values.name, tables: [] });
       message.success(`Schema "${values.name}" created`);
@@ -46,11 +50,14 @@ export default function SchemaListPage() {
       setCreateOpen(false);
     } catch (e: unknown) {
       message.error(getErrorMessage(e));
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleRename = async () => {
     const values = await renameForm.validateFields();
+    setSaving(true);
     try {
       await getAdminClient().provisioning.schemas.patchSchema(renameTarget, { name: values.name });
       message.success(`Schema renamed to "${values.name}"`);
@@ -59,6 +66,8 @@ export default function SchemaListPage() {
       queryClient.invalidateQueries({ queryKey: ['schemas'] });
     } catch (e: unknown) {
       message.error(getErrorMessage(e));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -83,14 +92,19 @@ export default function SchemaListPage() {
           New Schema
         </Button>
       </Space>
+      <Input.Search placeholder="Search schemas..." allowClear onChange={(e) => setSearch(e.target.value)} style={{ marginBottom: 12, maxWidth: 300 }} />
       <Table
-        dataSource={tableData}
+        dataSource={tableData.filter((r) => !search || r.name.toLowerCase().includes(search.toLowerCase()))}
         rowKey="name"
+        pagination={false}
         columns={[
           { title: 'Name', dataIndex: 'name', key: 'name',
+            sorter: (a, b) => a.name.localeCompare(b.name),
             render: (name: string) => <a onClick={() => navigate(`/schemas/${name}`)}>{name}</a>,
           },
-          { title: 'Tables', dataIndex: 'tableCount', key: 'tableCount' },
+          { title: 'Tables', dataIndex: 'tableCount', key: 'tableCount',
+            sorter: (a, b) => a.tableCount - b.tableCount,
+          },
           { title: 'Actions', key: 'actions', width: 150,
             render: (_: unknown, record: any) => (
               <Space>
@@ -105,20 +119,22 @@ export default function SchemaListPage() {
           },
         ]}
       />
-      <Modal title="Create Schema" open={createOpen} onOk={handleCreate} onCancel={() => setCreateOpen(false)}>
+      <Drawer title="Create Schema" open={createOpen} onClose={() => setCreateOpen(false)} width={400}
+        extra={<Button type="primary" onClick={handleCreate} loading={saving}>Save</Button>}>
         <Form form={form} layout="vertical">
           <Form.Item name="name" label="Schema Name" rules={[{ required: true }]}>
             <Input />
           </Form.Item>
         </Form>
-      </Modal>
-      <Modal title="Rename Schema" open={renameOpen} onOk={handleRename} onCancel={() => setRenameOpen(false)}>
+      </Drawer>
+      <Drawer title="Rename Schema" open={renameOpen} onClose={() => setRenameOpen(false)} width={400}
+        extra={<Button type="primary" onClick={handleRename} loading={saving}>Save</Button>}>
         <Form form={renameForm} layout="vertical">
           <Form.Item name="name" label="New Name" rules={[{ required: true }]}>
             <Input />
           </Form.Item>
         </Form>
-      </Modal>
+      </Drawer>
     </div>
   );
 }

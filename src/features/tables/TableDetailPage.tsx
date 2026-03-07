@@ -41,9 +41,6 @@ export default function TableDetailPage() {
         </Descriptions>
       )}
       <Tabs items={[
-        { key: 'data', label: 'Data',
-          children: <DataEditor schema={schema!} table={table!} columns={columns} constraints={constraints} />,
-        },
         { key: 'columns', label: `Columns (${columns.length})`,
           children: <ColumnEditor schema={schema!} table={table!} columns={columns} onRefresh={refetch} />,
         },
@@ -58,6 +55,9 @@ export default function TableDetailPage() {
         },
         { key: 'metadata', label: 'Metadata',
           children: <MetadataManager schema={schema!} table={table!} />,
+        },
+        { key: 'data', label: 'Data',
+          children: <DataEditor schema={schema!} table={table!} columns={columns} constraints={constraints} />,
         },
       ]} />
     </div>

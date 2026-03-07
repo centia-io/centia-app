@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Table, Button, Space, Alert, Form, Input, InputNumber, Select, message, Typography } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SaveOutlined, CloseOutlined, ReloadOutlined } from '@ant-design/icons';
 import { getSql } from '../../baas/client';
@@ -127,7 +127,11 @@ export default function DataEditor({ schema, table, columns, constraints }: Prop
 
   // --- PK detection ---
   const pkConstraint = constraints.find((c: any) => c.constraint === 'primary');
-  const pkColumns: string[] = pkConstraint?.columns ?? [];
+  const pkColumns: string[] = useMemo(
+    () => pkConstraint?.columns ?? [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [JSON.stringify(pkConstraint?.columns)],
+  );
   const hasPk = pkColumns.length > 0;
 
   // Column metadata lookup
@@ -169,8 +173,8 @@ export default function DataEditor({ schema, table, columns, constraints }: Prop
 
   useEffect(() => {
     setEditingKey('');
-    fetchData();
-  }, [fetchData]);
+    if (columns.length > 0) fetchData();
+  }, [fetchData, columns.length]);
 
   // --- Editability helpers ---
   const isColReadOnly = (colName: string, isNewRow: boolean) => {

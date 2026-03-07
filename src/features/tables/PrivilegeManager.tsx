@@ -54,7 +54,9 @@ export default function PrivilegeManager({ schema, table }: Props) {
       size="small"
       pagination={false}
       columns={[
-        { title: 'User', dataIndex: 'name', key: 'name' },
+        { title: 'User', dataIndex: 'name', key: 'name',
+          sorter: (a: any, b: any) => (a.name ?? '').localeCompare(b.name ?? ''),
+        },
         {
           title: 'Privilege',
           key: 'privilege',

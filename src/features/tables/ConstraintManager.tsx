@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Table, Button, Tag, message } from 'antd';
+import { Table, Button, Input, Tag, message } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
 import { confirmDelete } from '../../components/ConfirmDelete';
@@ -14,17 +14,21 @@ interface Props {
 }
 
 export default function ConstraintManager({ schema, table, constraints, columns, onRefresh }: Props) {
-  const [modalOpen, setModalOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState('');
 
   const handleCreate = async (values: any) => {
-    const admin = getAdminClient();
+    setSaving(true);
     try {
-      await admin.provisioning.constraints.postConstraint(schema, table, values);
+      await getAdminClient().provisioning.constraints.postConstraint(schema, table, values);
       message.success('Constraint created');
-      setModalOpen(false);
+      setDrawerOpen(false);
       onRefresh();
     } catch (e: unknown) {
       message.error(getErrorMessage(e));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -43,16 +47,21 @@ export default function ConstraintManager({ schema, table, constraints, columns,
 
   return (
     <div>
-      <Button icon={<PlusOutlined />} onClick={() => setModalOpen(true)} style={{ marginBottom: 12 }}>
+      <Button icon={<PlusOutlined />} onClick={() => setDrawerOpen(true)} style={{ marginBottom: 12 }}>
         Add Constraint
       </Button>
+      <Input.Search placeholder="Search constraints..." allowClear onChange={(e) => setSearch(e.target.value)} style={{ marginBottom: 12, maxWidth: 300 }} />
       <Table
-        dataSource={constraints}
+        dataSource={constraints.filter((r: any) => !search || [r.name, r.constraint].some((v: string) => (v ?? '').toLowerCase().includes(search.toLowerCase())))}
         rowKey="name"
         size="small"
+        pagination={false}
         columns={[
-          { title: 'Name', dataIndex: 'name', key: 'name' },
+          { title: 'Name', dataIndex: 'name', key: 'name',
+            sorter: (a: any, b: any) => (a.name ?? '').localeCompare(b.name ?? ''),
+          },
           { title: 'Type', dataIndex: 'constraint', key: 'type',
+            sorter: (a: any, b: any) => (a.constraint ?? '').localeCompare(b.constraint ?? ''),
             render: (v: string) => <Tag color={v === 'primary' ? 'gold' : v === 'foreign' ? 'blue' : 'default'}>{v}</Tag>,
           },
           { title: 'Columns', dataIndex: 'columns', key: 'columns',
@@ -68,7 +77,7 @@ export default function ConstraintManager({ schema, table, constraints, columns,
           },
         ]}
       />
-      <ConstraintFormModal open={modalOpen} columns={columns} onOk={handleCreate} onCancel={() => setModalOpen(false)} />
+      <ConstraintFormModal open={drawerOpen} columns={columns} onOk={handleCreate} onCancel={() => setDrawerOpen(false)} saving={saving} />
     </div>
   );
 }

@@ -10,6 +10,7 @@ export default function CallbackPage() {
       .redirectHandle()
       .then((ok: boolean) => {
         if (ok) {
+          sessionStorage.removeItem('centia_auto_login_attempted');
           window.location.replace('/');
         } else {
           setError('Authentication failed');
