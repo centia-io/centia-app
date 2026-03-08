@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Table, Segmented, Spin, message } from 'antd';
+import { Table, Segmented, Spin } from 'antd';
+import { message } from '../../utils/message';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
 
 interface Props {

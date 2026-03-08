@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Table, Button, Space, Input, Modal, Form, Tag, message, Alert } from 'antd';
+import { Table, Button, Space, Input, Modal, Form, Tag, Alert } from 'antd';
+import { message } from '../utils/message';
 import { PlusOutlined, DeleteOutlined, ExperimentOutlined } from '@ant-design/icons';
 import { useLiveQuery } from '@tanstack/react-db';
 import { useNavigate } from 'react-router-dom';

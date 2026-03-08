@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Form, Input, Select, Button, Card, Alert, message } from 'antd';
+import { Form, Input, Select, Button, Card, Alert } from 'antd';
+import { message } from '../../utils/message';
 import { BranchesOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';

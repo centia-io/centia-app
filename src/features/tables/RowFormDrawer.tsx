@@ -1,4 +1,5 @@
-import { Drawer, Form, Input, InputNumber, Select, Switch, Button, message, Typography } from 'antd';
+import { Drawer, Form, Input, InputNumber, Select, Switch, Button, Typography } from 'antd';
+import { message } from '../../utils/message';
 import { getSql } from '../../baas/client';
 
 interface Props {

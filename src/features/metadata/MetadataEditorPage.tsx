@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Button, Input, Space, Alert, message, Card, Form } from 'antd';
+import { Button, Input, Space, Alert, Card, Form } from 'antd';
+import { message } from '../../utils/message';
 import { SearchOutlined, SaveOutlined } from '@ant-design/icons';
 import { getMeta } from '../../baas/client';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';

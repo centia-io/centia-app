@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Button, Form, Spin, message } from 'antd';
+import { Button, Form, Spin } from 'antd';
+import { message } from '../../utils/message';
 import { SaveOutlined } from '@ant-design/icons';
 import { getMeta } from '../../baas/client';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';

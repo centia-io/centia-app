@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Table, Button, Space, Alert, Form, Input, InputNumber, Select, message, Typography } from 'antd';
+import { Table, Button, Space, Alert, Form, Input, InputNumber, Select, Typography } from 'antd';
+import { message } from '../../utils/message';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SaveOutlined, CloseOutlined, ReloadOutlined } from '@ant-design/icons';
 import { getSql } from '../../baas/client';
 import { confirmDelete } from '../../components/ConfirmDelete';

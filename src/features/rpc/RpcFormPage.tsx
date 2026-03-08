@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Form, Input, Select, Button, Space, Spin, message } from 'antd';
+import { Form, Input, Select, Button, Space, Spin } from 'antd';
+import { message } from '../../utils/message';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
 import { queryClient } from '../../data/queryClient';

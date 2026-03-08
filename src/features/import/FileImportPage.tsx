@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Upload, Button, Form, Input, Select, Switch, Space, Steps, Card, Alert, message } from 'antd';
+import { Upload, Button, Form, Input, Select, Switch, Space, Steps, Card, Alert } from 'antd';
+import { message } from '../../utils/message';
 import { UploadOutlined, CloudUploadOutlined } from '@ant-design/icons';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
 import { useQuery } from '@tanstack/react-query';

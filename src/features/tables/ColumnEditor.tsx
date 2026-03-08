@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Table, Button, Space, Input, InputNumber, Switch, Checkbox, Modal, Form, Select, Tag, message } from 'antd';
+import { Table, Button, Space, Input, InputNumber, Switch, Checkbox, Modal, Form, Select, Tag } from 'antd';
+import { message } from '../../utils/message';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SaveOutlined } from '@ant-design/icons';
 import { getMeta } from '../../baas/client';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';

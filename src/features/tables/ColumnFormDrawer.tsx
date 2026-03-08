@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { Drawer, Form, Input, Select, Switch, Button, message } from 'antd';
+import { Drawer, Form, Input, Select, Switch, Button } from 'antd';
+import { message } from '../../utils/message';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
 
 const PG_TYPES = [

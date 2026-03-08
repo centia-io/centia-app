@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Button, Select, Space, Spin, Alert, Typography, message } from 'antd';
+import { Button, Select, Space, Spin, Alert, Typography } from 'antd';
+import { message } from '../../utils/message';
 import { PlayCircleOutlined } from '@ant-design/icons';
 import { getSql } from '../../baas/client';
 import CodeEditor from '../../components/CodeEditor';

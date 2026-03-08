@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Table, Button, Space, Drawer, Form, Input, Select, Spin, Alert, message } from 'antd';
+import { Table, Button, Space, Drawer, Form, Input, Select, Spin, Alert } from 'antd';
+import { message } from '../../utils/message';
 
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';

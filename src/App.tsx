@@ -1,12 +1,13 @@
 import { Suspense } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import { ConfigProvider, Spin, Flex, theme } from 'antd';
+import { ConfigProvider, App as AntApp, Spin, Flex, theme } from 'antd';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './auth/AuthProvider';
 import { routes } from './routes';
 import { queryClient, initPersistence } from './data/queryClient';
 import OfflineBanner from './components/OfflineBanner';
 import { ThemeProvider, useTheme } from './theme/ThemeProvider';
+import { setMessageInstance } from './utils/message';
 
 // Initialize IndexedDB persistence if VITE_CLIENT_FIRST_PERSIST=true
 initPersistence();
@@ -19,6 +20,12 @@ const Loading = () => (
   </Flex>
 );
 
+function MessageCapture() {
+  const { message } = AntApp.useApp();
+  setMessageInstance(message);
+  return null;
+}
+
 function ThemedApp() {
   const { resolved } = useTheme();
   return (
@@ -28,12 +35,15 @@ function ThemedApp() {
         token: { colorPrimary: '#1677ff' },
       }}
     >
-      <AuthProvider>
-        <OfflineBanner />
-        <Suspense fallback={<Loading />}>
-          <RouterProvider router={router} />
-        </Suspense>
-      </AuthProvider>
+      <AntApp>
+        <MessageCapture />
+        <AuthProvider>
+          <OfflineBanner />
+          <Suspense fallback={<Loading />}>
+            <RouterProvider router={router} />
+          </Suspense>
+        </AuthProvider>
+      </AntApp>
     </ConfigProvider>
   );
 }
