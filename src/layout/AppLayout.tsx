@@ -14,7 +14,7 @@ export default function AppLayout() {
     : 'https://centia.io/img/centia-logo-dark.svg';
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
+    <Layout style={{ height: '100vh', overflow: 'hidden' }}>
       <Sider width={220} trigger={null} style={{ background: token.colorBgContainer, borderRight: `1px solid ${token.colorBorderSecondary}` }}>
         <div style={{ padding: '16px 24px', borderBottom: `1px solid ${token.colorBorderSecondary}`, display: 'flex', alignItems: 'center', gap: 10 }}>
           <img src={logoSrc} alt="Centia.io" style={{ height: 28 }} />

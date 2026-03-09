@@ -28,12 +28,15 @@ export default function ColumnFormDrawer({ open, schema, table, column, onClose,
 
   useEffect(() => {
     if (open) {
-      form.setFieldsValue(column ?? { name: '', type: '', is_nullable: true, default_value: '', comment: '' });
+      form.setFieldsValue(column ?? { name: '', type: '', is_nullable: true });
     }
   }, [open, column, form]);
 
   const handleSubmit = async () => {
-    const values = await form.validateFields();
+    const raw = await form.validateFields();
+    const values = Object.fromEntries(
+      Object.entries(raw).filter(([, v]) => v !== '' && v !== undefined),
+    );
     const admin = getAdminClient();
 
     try {

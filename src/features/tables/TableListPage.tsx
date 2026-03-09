@@ -1,9 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Table, Button, Space, Drawer, Modal, Form, Input, InputNumber, Select, Checkbox, Spin, Alert, Tabs, Typography } from 'antd';
 import { message } from '../../utils/message';
-import { PlusOutlined, DeleteOutlined, ArrowLeftOutlined, SaveOutlined, CodeOutlined, EditOutlined } from '@ant-design/icons';
-import { getMeta } from '../../baas/client';
+import { PlusOutlined, DeleteOutlined, ArrowLeftOutlined, SaveOutlined, CodeOutlined, EditOutlined, HolderOutlined } from '@ant-design/icons';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { useMetaQuery, invalidateMeta } from '../../hooks/useMetaQuery';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
 import SchemaForm from '../../components/SchemaForm';
 import { testPropertiesSchema } from '../../data/testPropertiesSchema';
@@ -27,6 +31,32 @@ interface TableMeta {
   tags: string[];
 }
 
+// ──── Drag helpers ────
+
+function SortableRow(props: any) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: props['data-row-key'],
+  });
+  const style: React.CSSProperties = {
+    ...props.style,
+    transform: CSS.Translate.toString(transform),
+    transition,
+    ...(isDragging ? { position: 'relative', zIndex: 9999, background: '#fafafa' } : {}),
+  };
+  return <tr {...props} ref={setNodeRef} style={style} {...attributes} />;
+}
+
+function DragHandle({ rowKey }: { rowKey: string }) {
+  const { listeners, setActivatorNodeRef } = useSortable({ id: rowKey });
+  return (
+    <HolderOutlined
+      ref={setActivatorNodeRef}
+      {...listeners}
+      style={{ cursor: 'grab', color: '#999' }}
+    />
+  );
+}
+
 // ──── Tables ────
 
 function TablesPanel({ schema }: { schema: string }) {
@@ -35,10 +65,8 @@ function TablesPanel({ schema }: { schema: string }) {
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [form] = Form.useForm();
-  const [tablesMeta, setTablesMeta] = useState<Record<string, TableMeta>>({});
   const [dirtyMeta, setDirtyMeta] = useState<Record<string, Partial<TableMeta>>>({});
   const [savingMeta, setSavingMeta] = useState<string | null>(null);
-  const [tablesProps, setTablesProps] = useState<Record<string, Record<string, any>>>({});
   const [propsModal, setPropsModal] = useState<string | null>(null);
   const [propsForm] = Form.useForm();
   const [savingProps, setSavingProps] = useState(false);
@@ -66,34 +94,26 @@ function TablesPanel({ schema }: { schema: string }) {
       columnCount: t.columns?.length ?? 0,
     })) ?? [];
 
-  const fetchMeta = useCallback(() => {
-    if (!tables.length) return;
-    const query = tables.map((t) => `${schema}.${t.name}`).join(',');
-    getMeta().query(query)
-      .then((res: any) => {
-        const rels = res?.relations ?? {};
-        const meta: Record<string, TableMeta> = {};
-        const props: Record<string, Record<string, any>> = {};
-        for (const t of tables) {
-          const key = `${schema}.${t.name}`;
-          const m = rels[key] ?? {};
-          meta[t.name] = {
-            title: m.title ?? '',
-            abstract: m.abstract ?? '',
-            group: m.group ?? '',
-            sort_id: m.sort_id ?? null,
-            tags: m.tags ?? [],
-          };
-          props[t.name] = m.properties ?? {};
-        }
-        setTablesMeta(meta);
-        setTablesProps(props);
-      })
-      .catch(() => {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schema, tables.length]);
+  const { data: metaData, isLoading: metaLoading } = useMetaQuery(schema, tables.length > 0);
 
-  useEffect(() => { fetchMeta(); }, [fetchMeta]);
+  const { tablesMeta, tablesProps } = useMemo(() => {
+    const rels = metaData?.relations ?? {};
+    const meta: Record<string, TableMeta> = {};
+    const props: Record<string, Record<string, any>> = {};
+    for (const t of tables) {
+      const key = `${schema}.${t.name}`;
+      const m = rels[key] ?? {};
+      meta[t.name] = {
+        title: m.title ?? '',
+        abstract: m.abstract ?? '',
+        group: m.group ?? '',
+        sort_id: m.sort_id ?? null,
+        tags: m.tags ?? [],
+      };
+      props[t.name] = m.properties ?? {};
+    }
+    return { tablesMeta: meta, tablesProps: props };
+  }, [metaData, tables, schema]);
 
   const updateDirty = (tableName: string, key: keyof TableMeta, value: any) => {
     setDirtyMeta((prev) => ({
@@ -126,7 +146,7 @@ function TablesPanel({ schema }: { schema: string }) {
         throw e;
       });
       message.success(`Metadata for "${tableName}" updated`);
-      setTablesMeta((prev) => ({ ...prev, [tableName]: merged }));
+      await invalidateMeta(schema);
       setDirtyMeta((prev) => {
         const next = { ...prev };
         delete next[tableName];
@@ -166,7 +186,7 @@ function TablesPanel({ schema }: { schema: string }) {
         throw e;
       });
       message.success(`Properties for "${propsModal}" updated`);
-      setTablesProps((prev) => ({ ...prev, [propsModal]: cleaned }));
+      invalidateMeta(schema);
       setPropsModal(null);
     } catch (e: unknown) {
       message.error(getErrorMessage(e));
@@ -231,7 +251,7 @@ function TablesPanel({ schema }: { schema: string }) {
       message.success(`Metadata updated for ${selectedRows.length} tables`);
       setBulkOpen(false);
       setSelectedRows([]);
-      fetchMeta();
+      invalidateMeta(schema);
     } catch (e: unknown) {
       message.error(getErrorMessage(e));
     } finally {
@@ -283,7 +303,65 @@ function TablesPanel({ schema }: { schema: string }) {
     });
   };
 
-  if (isLoading) return <Spin />;
+  const sortedByMeta = useMemo(() => {
+    const filtered = tables.filter((r) => !search || r.name.toLowerCase().includes(search.toLowerCase()));
+    return filtered.sort((a, b) => {
+      const av = tablesMeta[a.name]?.sort_id ?? null;
+      const bv = tablesMeta[b.name]?.sort_id ?? null;
+      if (av == null && bv == null) return a.name.localeCompare(b.name);
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      return av - bv;
+    });
+  }, [tables, tablesMeta, search]);
+
+  // Local order state to avoid flicker on drag-end
+  const [localOrder, setLocalOrder] = useState<string[] | null>(null);
+
+  const sortedTables = useMemo(() => {
+    if (!localOrder) return sortedByMeta;
+    const byName = new Map(sortedByMeta.map((r) => [r.name, r]));
+    return localOrder.map((name) => byName.get(name)).filter(Boolean) as typeof sortedByMeta;
+  }, [sortedByMeta, localOrder]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  );
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = sortedTables.findIndex((r) => r.name === active.id);
+    const newIndex = sortedTables.findIndex((r) => r.name === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    // Immediate local reorder to prevent flicker
+    const reordered = arrayMove(sortedTables, oldIndex, newIndex);
+    setLocalOrder(reordered.map((r) => r.name));
+
+    // Assign sort_id in steps of 10
+    const relations: Record<string, { sort_id: number }> = {};
+    reordered.forEach((row, i) => {
+      relations[`${schema}.${row.name}`] = { sort_id: (i + 1) * 10 };
+    });
+
+    try {
+      await getAdminClient().provisioning.metadata.patchMetaData({ relations }).catch((e: any) => {
+        if (e?.status === 204) return;
+        throw e;
+      });
+      message.success('Table order updated');
+      await invalidateMeta(schema);
+    } catch (e: unknown) {
+      message.error(getErrorMessage(e));
+      await invalidateMeta(schema);
+    } finally {
+      setLocalOrder(null);
+    }
+  };
+
+  if (isLoading || metaLoading) return <Spin />;
   if (error) return <Alert type="error" message={String(error)} />;
 
   return (
@@ -297,16 +375,22 @@ function TablesPanel({ schema }: { schema: string }) {
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>New Table</Button>
       </Space>
       <Input.Search placeholder="Search tables..." allowClear onChange={(e) => setSearch(e.target.value)} style={{ marginBottom: 12, maxWidth: 300 }} />
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={sortedTables.map((r) => r.name)} strategy={verticalListSortingStrategy}>
       <Table
-        dataSource={tables.filter((r) => !search || r.name.toLowerCase().includes(search.toLowerCase()))}
+        dataSource={sortedTables}
         rowKey="name"
         size="small"
         pagination={false}
+        components={{ body: { row: SortableRow } }}
         rowSelection={{
           selectedRowKeys: selectedRows,
           onChange: (keys) => setSelectedRows(keys as string[]),
         }}
         columns={[
+          { title: '', key: 'drag', width: 40, align: 'center' as const,
+            render: (_: unknown, record: any) => <DragHandle rowKey={record.name} />,
+          },
           { title: 'Name', dataIndex: 'name', key: 'name', width: 160,
             sorter: (a, b) => a.name.localeCompare(b.name),
             render: (name: string) => <a onClick={() => navigate(`/schemas/${schema}/tables/${name}`)}>{name}</a>,
@@ -377,6 +461,8 @@ function TablesPanel({ schema }: { schema: string }) {
           },
         ]}
       />
+        </SortableContext>
+      </DndContext>
       <Modal
         title={`Properties — ${propsModal}`}
         open={!!propsModal}

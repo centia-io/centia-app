@@ -1,11 +1,15 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Table, Button, Space, Input, InputNumber, Switch, Checkbox, Modal, Form, Select, Tag } from 'antd';
+import { useState, useMemo } from 'react';
+import { Table, Button, Space, Input, InputNumber, Switch, Checkbox, Modal, Form, Select, Tag, Spin } from 'antd';
 import { message } from '../../utils/message';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SaveOutlined } from '@ant-design/icons';
-import { getMeta } from '../../baas/client';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SaveOutlined, HolderOutlined } from '@ant-design/icons';
+import { useMetaQuery, invalidateMeta } from '../../hooks/useMetaQuery';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
 import { confirmDelete } from '../../components/ConfirmDelete';
 import ColumnFormDrawer from './ColumnFormDrawer';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface Props {
   schema: string;
@@ -20,11 +24,23 @@ interface FieldMeta {
   sort_id: number | null;
 }
 
+function SortableRow(props: any) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: props['data-row-key'],
+  });
+  const style: React.CSSProperties = {
+    ...props.style,
+    transform: CSS.Translate.toString(transform),
+    transition,
+    ...(isDragging ? { position: 'relative', zIndex: 9999, background: '#fafafa' } : {}),
+  };
+  return <tr {...props} ref={setNodeRef} style={style} {...attributes} data-drag-listeners={JSON.stringify(listeners)} />;
+}
+
 export default function ColumnEditor({ schema, table, columns, onRefresh }: Props) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editCol, setEditCol] = useState<any>(null);
   const [search, setSearch] = useState('');
-  const [fieldsMeta, setFieldsMeta] = useState<Record<string, FieldMeta>>({});
   const [dirtyMeta, setDirtyMeta] = useState<Record<string, Partial<FieldMeta>>>({});
   const [savingMeta, setSavingMeta] = useState<string | null>(null);
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
@@ -35,25 +51,20 @@ export default function ColumnEditor({ schema, table, columns, onRefresh }: Prop
 
   const qualifiedName = `${schema}.${table}`;
 
-  const fetchMeta = useCallback(() => {
-    getMeta().query(qualifiedName)
-      .then((res: any) => {
-        const rel = res?.relations?.[qualifiedName] ?? res?.[qualifiedName] ?? {};
-        const fields: Record<string, FieldMeta> = {};
-        for (const [name, f] of Object.entries(rel.fields ?? {} as Record<string, any>)) {
-          fields[name] = {
-            alias: (f as any).alias ?? null,
-            queryable: (f as any).queryable ?? false,
-            sort_id: (f as any).sort_id ?? null,
-          };
-        }
-        setFieldsMeta(fields);
-        setDirtyMeta({});
-      })
-      .catch(() => {});
-  }, [qualifiedName]);
+  const { data: metaData, isLoading: metaLoading } = useMetaQuery(schema);
 
-  useEffect(() => { fetchMeta(); }, [fetchMeta]);
+  const fieldsMeta = useMemo(() => {
+    const rel = metaData?.relations?.[qualifiedName] ?? metaData?.[qualifiedName] ?? {};
+    const fields: Record<string, FieldMeta> = {};
+    for (const [name, f] of Object.entries(rel.fields ?? {} as Record<string, any>)) {
+      fields[name] = {
+        alias: (f as any).alias ?? null,
+        queryable: (f as any).queryable ?? false,
+        sort_id: (f as any).sort_id ?? null,
+      };
+    }
+    return fields;
+  }, [metaData, qualifiedName]);
 
   const updateDirty = (colName: string, key: keyof FieldMeta, value: any) => {
     setDirtyMeta((prev) => ({
@@ -87,7 +98,7 @@ export default function ColumnEditor({ schema, table, columns, onRefresh }: Prop
         throw e;
       });
       message.success(`Metadata for "${colName}" updated`);
-      setFieldsMeta((prev) => ({ ...prev, [colName]: merged }));
+      await invalidateMeta(schema);
       setDirtyMeta((prev) => {
         const next = { ...prev };
         delete next[colName];
@@ -136,7 +147,7 @@ export default function ColumnEditor({ schema, table, columns, onRefresh }: Prop
       message.success(`Metadata updated for ${selectedRows.length} columns`);
       setBulkOpen(false);
       setSelectedRows([]);
-      fetchMeta();
+      invalidateMeta(schema);
     } catch (e: unknown) {
       message.error(getErrorMessage(e));
     } finally {
@@ -162,6 +173,71 @@ export default function ColumnEditor({ schema, table, columns, onRefresh }: Prop
     return fieldsMeta[colName]?.[key] ?? (key === 'queryable' ? false : null);
   };
 
+  // Sort dataSource by sort_id (nulls last), then by name
+  const sortedByMeta = useMemo(() => {
+    const filtered = columns
+      .map((r: any) => ({ ...r, _sort_id: fieldsMeta[r.name]?.sort_id ?? null }))
+      .filter((r: any) => !search || [r.name, r.type].some((v: string) => (v ?? '').toLowerCase().includes(search.toLowerCase())));
+    return filtered.sort((a: any, b: any) => {
+      if (a._sort_id == null && b._sort_id == null) return (a.name ?? '').localeCompare(b.name ?? '');
+      if (a._sort_id == null) return 1;
+      if (b._sort_id == null) return -1;
+      return a._sort_id - b._sort_id;
+    });
+  }, [columns, fieldsMeta, search]);
+
+  // Local order state to avoid flicker on drag-end
+  const [localOrder, setLocalOrder] = useState<string[] | null>(null);
+
+  const dataSource = useMemo(() => {
+    if (!localOrder) return sortedByMeta;
+    const byName = new Map(sortedByMeta.map((r: any) => [r.name, r]));
+    return localOrder.map((name) => byName.get(name)).filter(Boolean);
+  }, [sortedByMeta, localOrder]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  );
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = dataSource.findIndex((r: any) => r.name === active.id);
+    const newIndex = dataSource.findIndex((r: any) => r.name === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    // Immediate local reorder to prevent flicker
+    const reordered = arrayMove(dataSource, oldIndex, newIndex);
+    setLocalOrder(reordered.map((r: any) => r.name));
+
+    // Assign sort_id in steps of 10
+    const fieldsPatch: Record<string, { sort_id: number }> = {};
+    reordered.forEach((row: any, i: number) => {
+      fieldsPatch[row.name] = { sort_id: (i + 1) * 10 };
+    });
+
+    try {
+      await getAdminClient().provisioning.metadata.patchMetaData({
+        relations: {
+          [qualifiedName]: { fields: fieldsPatch },
+        },
+      }).catch((e: any) => {
+        if (e?.status === 204) return;
+        throw e;
+      });
+      message.success('Column order updated');
+      await invalidateMeta(schema);
+    } catch (e: unknown) {
+      message.error(getErrorMessage(e));
+      await invalidateMeta(schema);
+    } finally {
+      setLocalOrder(null);
+    }
+  };
+
+  if (metaLoading) return <Spin style={{ display: 'block', marginTop: 24 }} />;
+
   return (
     <div>
       <Space style={{ marginBottom: 12 }}>
@@ -175,75 +251,83 @@ export default function ColumnEditor({ schema, table, columns, onRefresh }: Prop
         )}
       </Space>
       <Input.Search placeholder="Search columns..." allowClear onChange={(e) => setSearch(e.target.value)} style={{ marginBottom: 12, maxWidth: 300 }} />
-      <Table
-        dataSource={columns.filter((r: any) => !search || [r.name, r.type].some((v: string) => (v ?? '').toLowerCase().includes(search.toLowerCase())))}
-        rowKey="name"
-        size="small"
-        pagination={false}
-        rowSelection={{
-          selectedRowKeys: selectedRows,
-          onChange: (keys) => setSelectedRows(keys as string[]),
-        }}
-        columns={[
-          { title: 'Name', dataIndex: 'name', key: 'name',
-            sorter: (a: any, b: any) => (a.name ?? '').localeCompare(b.name ?? ''),
-          },
-          { title: 'Type', dataIndex: 'type', key: 'type',
-            sorter: (a: any, b: any) => (a.type ?? '').localeCompare(b.type ?? ''),
-          },
-          { title: 'Nullable', dataIndex: 'is_nullable', key: 'nullable',
-            render: (v: boolean) => v ? <Tag color="blue">YES</Tag> : <Tag>NO</Tag>,
-          },
-          { title: 'Default', dataIndex: 'default_value', key: 'default' },
-          { title: 'Alias', key: 'alias', width: 140,
-            render: (_: unknown, record: any) => (
-              <Input
-                size="small"
-                placeholder="—"
-                value={getFieldValue(record.name, 'alias') ?? ''}
-                onChange={(e) => updateDirty(record.name, 'alias', e.target.value || null)}
-              />
-            ),
-          },
-          { title: 'Queryable', key: 'queryable', width: 90, align: 'center' as const,
-            render: (_: unknown, record: any) => (
-              <Switch
-                size="small"
-                checked={!!getFieldValue(record.name, 'queryable')}
-                onChange={(v) => updateDirty(record.name, 'queryable', v)}
-              />
-            ),
-          },
-          { title: 'Sort ID', key: 'sort_id', width: 90,
-            render: (_: unknown, record: any) => (
-              <InputNumber
-                size="small"
-                placeholder="—"
-                value={getFieldValue(record.name, 'sort_id')}
-                onChange={(v) => updateDirty(record.name, 'sort_id', v)}
-                style={{ width: '100%' }}
-              />
-            ),
-          },
-          { title: 'Actions', key: 'actions', width: 130,
-            render: (_: unknown, record: any) => (
-              <Space>
-                {dirtyMeta[record.name] && (
-                  <Button
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={dataSource.map((r: any) => r.name)} strategy={verticalListSortingStrategy}>
+          <Table
+            dataSource={dataSource}
+            rowKey="name"
+            size="small"
+            pagination={false}
+            components={{ body: { row: SortableRow } }}
+            rowSelection={{
+              selectedRowKeys: selectedRows,
+              onChange: (keys) => setSelectedRows(keys as string[]),
+            }}
+            columns={[
+              { title: '', key: 'drag', width: 40, align: 'center' as const,
+                render: (_: unknown, record: any) => <DragHandle rowKey={record.name} />,
+              },
+              { title: 'Name', dataIndex: 'name', key: 'name',
+                sorter: (a: any, b: any) => (a.name ?? '').localeCompare(b.name ?? ''),
+              },
+              { title: 'Type', dataIndex: 'type', key: 'type',
+                sorter: (a: any, b: any) => (a.type ?? '').localeCompare(b.type ?? ''),
+              },
+              { title: 'Nullable', dataIndex: 'is_nullable', key: 'nullable',
+                render: (v: boolean) => v ? <Tag color="blue">YES</Tag> : <Tag>NO</Tag>,
+              },
+              { title: 'Default', dataIndex: 'default_value', key: 'default' },
+              { title: 'Alias', key: 'alias', width: 140,
+                render: (_: unknown, record: any) => (
+                  <Input
                     size="small"
-                    type="primary"
-                    icon={<SaveOutlined />}
-                    loading={savingMeta === record.name}
-                    onClick={() => saveMeta(record.name)}
+                    placeholder="—"
+                    value={getFieldValue(record.name, 'alias') ?? ''}
+                    onChange={(e) => updateDirty(record.name, 'alias', e.target.value || null)}
                   />
-                )}
-                <Button size="small" icon={<EditOutlined />} onClick={() => { setEditCol(record); setDrawerOpen(true); }} />
-                <Button size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record.name)} />
-              </Space>
-            ),
-          },
-        ]}
-      />
+                ),
+              },
+              { title: 'Queryable', key: 'queryable', width: 90, align: 'center' as const,
+                render: (_: unknown, record: any) => (
+                  <Switch
+                    size="small"
+                    checked={!!getFieldValue(record.name, 'queryable')}
+                    onChange={(v) => updateDirty(record.name, 'queryable', v)}
+                  />
+                ),
+              },
+              { title: 'Sort ID', key: 'sort_id', width: 90,
+                render: (_: unknown, record: any) => (
+                  <InputNumber
+                    size="small"
+                    placeholder="—"
+                    value={getFieldValue(record.name, 'sort_id')}
+                    onChange={(v) => updateDirty(record.name, 'sort_id', v)}
+                    style={{ width: '100%' }}
+                  />
+                ),
+              },
+              { title: 'Actions', key: 'actions', width: 130,
+                render: (_: unknown, record: any) => (
+                  <Space>
+                    {dirtyMeta[record.name] && (
+                      <Button
+                        size="small"
+                        type="primary"
+                        icon={<SaveOutlined />}
+                        loading={savingMeta === record.name}
+                        onClick={() => saveMeta(record.name)}
+                      />
+                    )}
+                    <Button size="small" icon={<EditOutlined />} onClick={() => { setEditCol(record); setDrawerOpen(true); }} />
+                    <Button size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record.name)} />
+                  </Space>
+                ),
+              },
+            ]}
+          />
+        </SortableContext>
+      </DndContext>
       <ColumnFormDrawer
         open={drawerOpen}
         schema={schema}
@@ -257,7 +341,7 @@ export default function ColumnEditor({ schema, table, columns, onRefresh }: Prop
             setTimeout(() => message.destroy('col-reload'), 3000);
           }
           onRefresh();
-          fetchMeta();
+          invalidateMeta(schema);
         }}
       />
       <Modal
@@ -286,5 +370,16 @@ export default function ColumnEditor({ schema, table, columns, onRefresh }: Prop
         </Form>
       </Modal>
     </div>
+  );
+}
+
+function DragHandle({ rowKey }: { rowKey: string }) {
+  const { listeners, setActivatorNodeRef } = useSortable({ id: rowKey });
+  return (
+    <HolderOutlined
+      ref={setActivatorNodeRef}
+      {...listeners}
+      style={{ cursor: 'grab', color: '#999' }}
+    />
   );
 }
