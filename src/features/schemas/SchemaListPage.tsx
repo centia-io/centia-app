@@ -65,6 +65,7 @@ export default function SchemaListPage() {
       renameForm.resetFields();
       setRenameOpen(false);
       queryClient.invalidateQueries({ queryKey: ['schemas'] });
+      queryClient.invalidateQueries({ queryKey: ['schema-detail', renameTarget] });
     } catch (e: unknown) {
       message.error(getErrorMessage(e));
     } finally {

@@ -77,6 +77,9 @@ function TablesPanel({ schema }: { schema: string }) {
   const [bulkPropsForm] = Form.useForm();
   const [bulkPropsEnabled, setBulkPropsEnabled] = useState<Record<string, boolean>>({});
   const [savingBulk, setSavingBulk] = useState(false);
+  const [renameTable, setRenameTable] = useState<string | null>(null);
+  const [renameForm] = Form.useForm();
+  const [savingRename, setSavingRename] = useState(false);
 
   const queryKey = ['schema-detail', schema] as const;
 
@@ -303,6 +306,24 @@ function TablesPanel({ schema }: { schema: string }) {
     });
   };
 
+  const handleRename = async () => {
+    const { name: newName } = await renameForm.validateFields();
+    if (!renameTable || newName === renameTable) return;
+    setSavingRename(true);
+    try {
+      await getAdminClient().provisioning.tables.patchTable(schema, renameTable, { name: newName });
+      message.success(`Table renamed to "${newName}"`);
+      queryClient.invalidateQueries({ queryKey });
+      queryClient.invalidateQueries({ queryKey: ['schemas'] });
+      await invalidateMeta(schema);
+      setRenameTable(null);
+    } catch (e: unknown) {
+      message.error(getErrorMessage(e));
+    } finally {
+      setSavingRename(false);
+    }
+  };
+
   const sortedByMeta = useMemo(() => {
     const filtered = tables.filter((r) => !search || r.name.toLowerCase().includes(search.toLowerCase()));
     return filtered.sort((a, b) => {
@@ -446,7 +467,7 @@ function TablesPanel({ schema }: { schema: string }) {
               </Button>
             ),
           },
-          { title: 'Actions', key: 'actions', width: 100,
+          { title: 'Actions', key: 'actions', width: 140,
             render: (_: unknown, record: any) => (
               <Space>
                 {dirtyMeta[record.name] && (
@@ -455,6 +476,7 @@ function TablesPanel({ schema }: { schema: string }) {
                     onClick={() => saveMeta(record.name)}
                   />
                 )}
+                <Button size="small" icon={<EditOutlined />} onClick={() => { setRenameTable(record.name); renameForm.setFieldsValue({ name: record.name }); }} />
                 <Button size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record.name)} />
               </Space>
             ),
@@ -524,6 +546,20 @@ function TablesPanel({ schema }: { schema: string }) {
         extra={<Button type="primary" onClick={handleCreate} loading={saving}>Save</Button>}>
         <Form form={form} layout="vertical">
           <Form.Item name="name" label="Table Name" rules={[{ required: true }]}>
+            <Input />
+          </Form.Item>
+        </Form>
+      </Drawer>
+      <Drawer
+        title={`Rename Table — ${renameTable}`}
+        open={!!renameTable}
+        onClose={() => setRenameTable(null)}
+        width={400}
+        destroyOnClose
+        extra={<Button type="primary" onClick={handleRename} loading={savingRename}>Rename</Button>}
+      >
+        <Form form={renameForm} layout="vertical">
+          <Form.Item name="name" label="New Name" rules={[{ required: true, message: 'Name is required' }]}>
             <Input />
           </Form.Item>
         </Form>
