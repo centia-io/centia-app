@@ -163,6 +163,7 @@ function TablesPanel({ schema }: { schema: string }) {
   };
 
   const openPropsModal = (tableName: string) => {
+    propsForm.resetFields();
     propsForm.setFieldsValue(tablesProps[tableName] ?? {});
     setPropsModal(tableName);
   };
@@ -485,29 +486,31 @@ function TablesPanel({ schema }: { schema: string }) {
       />
         </SortableContext>
       </DndContext>
-      <Modal
+      <Drawer
         title={`Properties — ${propsModal}`}
         open={!!propsModal}
-        onCancel={() => setPropsModal(null)}
-        onOk={saveProps}
-        confirmLoading={savingProps}
-        okText="Save"
-        width={600}
+        onClose={() => setPropsModal(null)}
+        width={500}
         destroyOnClose
+        extra={
+          <Button type="primary" onClick={saveProps} loading={savingProps}>
+            Save
+          </Button>
+        }
       >
-        <div style={{ maxHeight: 500, overflowY: 'auto', paddingRight: 8 }}>
-          <SchemaForm schema={testPropertiesSchema} form={propsForm} />
-        </div>
-      </Modal>
-      <Modal
+        <SchemaForm schema={testPropertiesSchema} form={propsForm} />
+      </Drawer>
+      <Drawer
         title={`Bulk Edit Metadata (${selectedRows.length} tables)`}
         open={bulkOpen}
-        onCancel={() => setBulkOpen(false)}
-        onOk={saveBulk}
-        confirmLoading={savingBulk}
-        okText="Apply"
-        width={600}
+        onClose={() => setBulkOpen(false)}
+        width={500}
         destroyOnClose
+        extra={
+          <Button type="primary" onClick={saveBulk} loading={savingBulk}>
+            Apply
+          </Button>
+        }
       >
         <p style={{ marginBottom: 16, color: '#888' }}>
           Only checked fields will be applied. Unchecked fields remain unchanged.
@@ -541,7 +544,7 @@ function TablesPanel({ schema }: { schema: string }) {
             onEnabledChange={setBulkPropsEnabled}
           />
         </div>
-      </Modal>
+      </Drawer>
       <Drawer title="Create Table" open={createOpen} onClose={() => setCreateOpen(false)} width={400}
         extra={<Button type="primary" onClick={handleCreate} loading={saving}>Save</Button>}>
         <Form form={form} layout="vertical">
