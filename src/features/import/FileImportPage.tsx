@@ -1,11 +1,35 @@
 import { useState } from 'react';
-import { Upload, Button, Form, Input, Select, Switch, Space, Steps, Card, Alert } from 'antd';
+import { Upload, Button, Form, Input, Select, Switch, Space, Steps, Card, Alert, Table, Tag } from 'antd';
 import { message } from '../../utils/message';
 import { UploadOutlined, CloudUploadOutlined } from '@ant-design/icons';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
 import { useQuery } from '@tanstack/react-query';
 import type { UploadFile } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
+import type { FileProcessResponse } from '@centia-io/sdk';
 import JSZip from 'jszip';
+
+const resultColumns: ColumnsType<FileProcessResponse> = [
+  { title: 'Name', dataIndex: 'name', key: 'name' },
+  { title: 'Driver', dataIndex: 'driver', key: 'driver' },
+  { title: 'Rows', dataIndex: 'count', key: 'count', align: 'right' },
+  {
+    title: 'Geometry', dataIndex: 'geom_type', key: 'geom_type',
+    render: (v: string) => v || <Tag color="default">None</Tag>,
+  },
+  { title: 'SRS', dataIndex: 'auth_str', key: 'auth_str' },
+  {
+    title: 'WKT', dataIndex: 'has_wkt', key: 'has_wkt', align: 'center',
+    render: (v: boolean) => v ? 'Yes' : 'No',
+  },
+  {
+    title: 'Status', key: 'error',
+    render: (_: unknown, row: FileProcessResponse) =>
+      row.error
+        ? <Tag color="error">{row.error}</Tag>
+        : <Tag color="success">OK</Tag>,
+  },
+];
 
 export default function FileImportPage() {
   const { data: schemasData } = useQuery({
@@ -183,7 +207,13 @@ export default function FileImportPage() {
 
       {dryResult && step === 2 && (
         <Card title="Dry Run Result">
-          <pre style={{ maxHeight: 300, overflow: 'auto' }}>{JSON.stringify(dryResult, null, 2)}</pre>
+          <Table<FileProcessResponse>
+            columns={resultColumns}
+            dataSource={dryResult}
+            rowKey="index"
+            pagination={false}
+            size="small"
+          />
           <Button type="primary" icon={<CloudUploadOutlined />} onClick={handleImport} loading={importing} style={{ marginTop: 12 }}>
             Proceed with Import
           </Button>
@@ -193,8 +223,14 @@ export default function FileImportPage() {
       {importResult && step === 3 && (
         <Card title="Import Complete">
           <Alert type="success" message="File imported successfully" style={{ marginBottom: 12 }} />
-          <pre>{JSON.stringify(importResult, null, 2)}</pre>
-          <Button onClick={handleReset}>
+          <Table<FileProcessResponse>
+            columns={resultColumns}
+            dataSource={importResult}
+            rowKey="index"
+            pagination={false}
+            size="small"
+          />
+          <Button onClick={handleReset} style={{ marginTop: 12 }}>
             Import Another File
           </Button>
         </Card>
