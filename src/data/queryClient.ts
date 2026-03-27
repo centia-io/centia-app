@@ -9,7 +9,7 @@ import { createIdbPersister } from './persist';
  * - staleTime: 30s — serve cached data instantly, background refetch after stale
  * - gcTime: 24h — keep unused cache entries for persistence across sessions
  * - refetchOnWindowFocus: true — auto-refresh when user returns to tab
- * - retry: 1 — single retry on failure
+ * - retry: 3 — retry on failure with exponential backoff
  */
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -17,7 +17,8 @@ export const queryClient = new QueryClient({
       staleTime: 30_000,
       gcTime: CLIENT_FIRST_PERSIST ? 1000 * 60 * 60 * 24 : 1000 * 60 * 5,
       refetchOnWindowFocus: true,
-      retry: 1,
+      retry: 3,
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 5000),
     },
   },
 });

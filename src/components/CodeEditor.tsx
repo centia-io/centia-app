@@ -1,6 +1,6 @@
 import { useRef, useEffect } from 'react';
 import { EditorView, keymap } from '@codemirror/view';
-import { EditorState } from '@codemirror/state';
+import { EditorState, type Extension } from '@codemirror/state';
 import { sql as sqlLang } from '@codemirror/lang-sql';
 import { json as jsonLang } from '@codemirror/lang-json';
 import { oneDark } from '@codemirror/theme-one-dark';
@@ -13,16 +13,17 @@ interface Props {
   height?: string;
   readOnly?: boolean;
   onRun?: () => void;
+  extensions?: Extension[];
 }
 
-export default function CodeEditor({ value, onChange, language = 'sql', height = '200px', readOnly = false, onRun }: Props) {
+export default function CodeEditor({ value, onChange, language = 'sql', height = '200px', readOnly = false, onRun, extensions: extraExtensions = [] }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const langExt = language === 'json' ? jsonLang() : sqlLang();
+    const langExt = extraExtensions.length > 0 ? [] : language === 'json' ? [jsonLang()] : [sqlLang()];
 
     const runKeymap = onRun
       ? keymap.of([{ key: 'Ctrl-Enter', run: () => { onRun(); return true; } }])
@@ -32,9 +33,15 @@ export default function CodeEditor({ value, onChange, language = 'sql', height =
       doc: value,
       extensions: [
         basicSetup,
-        langExt,
+        ...langExt,
+        ...extraExtensions,
         oneDark,
-        EditorView.theme({ '&': { height }, '.cm-scroller': { overflow: 'auto' } }),
+        EditorView.theme({
+          '&': { height },
+          '.cm-scroller': { overflow: 'auto' },
+          '.cm-tooltip-autocomplete ul li': { color: '#888' },
+          '.cm-tooltip-autocomplete ul li[aria-selected]': { color: '#fff' },
+        }),
         ...(readOnly ? [EditorState.readOnly.of(true)] : []),
         ...(onChange
           ? [EditorView.updateListener.of((update) => {
@@ -50,7 +57,7 @@ export default function CodeEditor({ value, onChange, language = 'sql', height =
 
     return () => view.destroy();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [language, readOnly]);
+  }, [language, readOnly, extraExtensions]);
 
   useEffect(() => {
     const view = viewRef.current;
