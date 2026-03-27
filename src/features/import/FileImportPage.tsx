@@ -9,7 +9,7 @@ import type { ColumnsType } from 'antd/es/table';
 import type { FileProcessResponse } from '@centia-io/sdk';
 import JSZip from 'jszip';
 
-const resultColumns: ColumnsType<FileProcessResponse> = [
+const getResultColumns = (hasSsrs: boolean): ColumnsType<FileProcessResponse> => [
   { title: 'Name', dataIndex: 'name', key: 'name' },
   { title: 'Driver', dataIndex: 'driver', key: 'driver' },
   { title: 'Rows', dataIndex: 'count', key: 'count', align: 'right' },
@@ -19,15 +19,12 @@ const resultColumns: ColumnsType<FileProcessResponse> = [
   },
   { title: 'SRS', dataIndex: 'auth_str', key: 'auth_str' },
   {
-    title: 'WKT', dataIndex: 'has_wkt', key: 'has_wkt', align: 'center',
-    render: (v: boolean) => v ? 'Yes' : 'No',
-  },
-  {
     title: 'Status', key: 'error',
-    render: (_: unknown, row: FileProcessResponse) =>
-      row.error
-        ? <Tag color="error">{row.error}</Tag>
-        : <Tag color="success">OK</Tag>,
+    render: (_: unknown, row: FileProcessResponse) => {
+      if (row.error) return <Tag color="error">{row.error}</Tag>;
+      if (!row.has_wkt && !hasSsrs) return <Tag color="warning">Missing projection - set Source SRS</Tag>;
+      return <Tag color="success">OK</Tag>;
+    },
   },
 ];
 
@@ -48,6 +45,8 @@ export default function FileImportPage() {
   const [importResult, setImportResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [form] = Form.useForm();
+  const sSrs = Form.useWatch('s_srs', form);
+  const resultColumns = getResultColumns(!!sSrs);
 
   const handleUpload = async () => {
     const originFiles = fileList.map((f) => f.originFileObj!);
@@ -83,7 +82,7 @@ export default function FileImportPage() {
   };
 
   const handleDryRun = async () => {
-    const values = await form.validateFields();
+    const values = form.getFieldsValue();
     setError(null);
     try {
       const data = await getAdminClient().provisioning.fileImport.postFileProcess({
@@ -124,11 +123,16 @@ export default function FileImportPage() {
     setFileList([]);
     setDryResult(null);
     setImportResult(null);
+    setError(null);
+    form.resetFields();
   };
 
   return (
     <div>
-      <h2>File Import</h2>
+      <Space style={{ marginBottom: 16 }}>
+        <h2 style={{ margin: 0 }}>File Import</h2>
+        {step > 0 && <Button onClick={handleReset}>Reset</Button>}
+      </Space>
       <Steps current={step} style={{ marginBottom: 24 }} items={[
         { title: 'Upload' },
         { title: 'Configure' },
@@ -169,29 +173,33 @@ export default function FileImportPage() {
 
       {step >= 1 && (
         <Card title={`File: ${uploadedFile}`} style={{ marginBottom: 16 }}>
-          <Form form={form} layout="vertical" initialValues={{
-            s_srs: 'EPSG:4326', t_srs: 'EPSG:4326', append: false, truncate: false, p_multi: false,
-          }}>
-            <Form.Item name="schema" label="Target Schema" rules={[{ required: true }]}>
-              <Select options={schemas.map((s) => ({ label: s, value: s }))} />
+          <Form form={form} layout="vertical">
+            <Form.Item name="schema" label="Target Schema" rules={[{ required: true, message: 'Schema is required for import' }]}>
+              <Select allowClear options={schemas.map((s) => ({ label: s, value: s }))} />
             </Form.Item>
-            <Form.Item name="s_srs" label="Source SRS">
-              <Input />
+            <Form.Item name="s_srs" label="Source SRS" tooltip="Fallback source SRS. Used only if the file doesn't contain projection information.">
+              <Input placeholder="e.g. EPSG:25832" />
             </Form.Item>
-            <Form.Item name="t_srs" label="Target SRS">
-              <Input />
+            <Form.Item name="t_srs" label="Target SRS" tooltip="Fallback target SRS. Used if no authority name/code is available. Defaults to EPSG:4326.">
+              <Input placeholder="EPSG:4326" />
             </Form.Item>
-            <Form.Item name="append" label="Append to existing table" valuePropName="checked">
+            <Form.Item name="append" label="Append" valuePropName="checked" tooltip="Append to existing table instead of creating a new one.">
               <Switch />
             </Form.Item>
-            <Form.Item name="truncate" label="Truncate before append" valuePropName="checked">
+            <Form.Item name="truncate" label="Truncate before append" valuePropName="checked" tooltip="Truncate table before appending. Only has effect if Append is enabled.">
               <Switch />
             </Form.Item>
-            <Form.Item name="p_multi" label="Promote to multi geometry" valuePropName="checked">
+            <Form.Item name="p_multi" label="Promote to multi geometry" valuePropName="checked" tooltip="Promote single geometries to multi-part geometries.">
               <Switch />
             </Form.Item>
-            <Form.Item name="timestamp" label="Timestamp field name">
-              <Input placeholder="Optional" />
+            <Form.Item name="timestamp" label="Timestamp field" tooltip="Create a timestamp field with this name in the imported table.">
+              <Input placeholder="e.g. created_at" />
+            </Form.Item>
+            <Form.Item name="x_possible_names" label="X / Longitude column names" tooltip="Potential column names for X/longitude. Only affects CSV files.">
+              <Input placeholder="lon*,Lon*,x,X" />
+            </Form.Item>
+            <Form.Item name="y_possible_names" label="Y / Latitude column names" tooltip="Potential column names for Y/latitude. Only affects CSV files.">
+              <Input placeholder="lat*,Lat*,y,Y" />
             </Form.Item>
             <Space>
               <Button onClick={handleDryRun}>Dry Run (Preview)</Button>
