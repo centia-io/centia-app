@@ -17,7 +17,7 @@ export function initClient() {
   codeFlow = new CodeFlow({
     host,
     clientId,
-    redirectUri: `${window.location.origin}/callback`,
+    redirectUri: `${window.location.origin}${import.meta.env.VITE_BASE_PATH || '/'}callback`,
   });
 
   sql = new Sql();
