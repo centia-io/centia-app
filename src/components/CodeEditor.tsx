@@ -16,7 +16,9 @@ interface Props {
   extensions?: Extension[];
 }
 
-export default function CodeEditor({ value, onChange, language = 'sql', height = '200px', readOnly = false, onRun, extensions: extraExtensions = [] }: Props) {
+const EMPTY_EXTENSIONS: Extension[] = [];
+
+export default function CodeEditor({ value, onChange, language = 'sql', height = '200px', readOnly = false, onRun, extensions: extraExtensions = EMPTY_EXTENSIONS }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
 

@@ -48,7 +48,7 @@ export default function RpcCallDrawer({ method, onClose }: Props) {
       <Space style={{ marginBottom: 4 }}>
         <Switch checked={includeParams} onChange={setIncludeParams} size="small" />
         <Typography.Text strong>Parameters (JSON)</Typography.Text>
-      </Space>
+      </Space><br/>
       {includeParams && (
         <CodeEditor value={params} onChange={setParams} language="json" height="120px" />
       )}
@@ -59,7 +59,7 @@ export default function RpcCallDrawer({ method, onClose }: Props) {
           <Typography.Text>Dry Run</Typography.Text>
         </Space>
       </Space>
-      {error && <Alert type="error" message={error} style={{ marginBottom: 12 }} />}
+      {error && <Alert type="error" title={error} style={{ marginBottom: 12 }} />}
       {result?.result?.data && <ResultTable data={result.result.data} />}
       {result && !result.result?.data && (
         <pre style={{ background: '#f5f5f5', padding: 12, borderRadius: 6, maxHeight: 300, overflow: 'auto' }}>
