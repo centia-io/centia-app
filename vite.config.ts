@@ -3,9 +3,10 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '');
+  const env = loadEnv(mode, process.cwd());
+  const base = process.env.VITE_BASE_PATH || env.VITE_BASE_PATH || '/';
   return {
-    base: env.VITE_BASE_PATH || '/',
+    base,
     plugins: [react()],
     server: { port: 4000 },
     resolve: {
