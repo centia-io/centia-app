@@ -11,7 +11,7 @@ export default function CallbackPage() {
       .then((ok: boolean) => {
         if (ok) {
           sessionStorage.removeItem('centia_auto_login_attempted');
-          window.location.replace('/');
+          window.location.replace(import.meta.env.VITE_BASE_PATH || '/');
         } else {
           setError('Authentication failed');
         }
