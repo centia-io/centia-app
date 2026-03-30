@@ -12,7 +12,9 @@ import { setMessageInstance } from './utils/message';
 // Initialize IndexedDB persistence if VITE_CLIENT_FIRST_PERSIST=true
 initPersistence();
 
-const router = createBrowserRouter(routes);
+const router = createBrowserRouter(routes, {
+  basename: import.meta.env.VITE_BASE_PATH || '/',
+});
 
 const Loading = () => (
   <Flex justify="center" align="center" style={{ minHeight: '100vh' }}>
