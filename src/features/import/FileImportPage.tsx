@@ -66,9 +66,10 @@ export default function FileImportPage() {
         file = new File([blob], 'files.zip', { type: 'application/zip' });
       }
 
+      const CHUNK_SIZE = 1_048_576; // 1 MB
       const formData = new FormData();
       formData.append('filename', file);
-      await getAdminClient().provisioning.fileImport.postFileUpload(formData);
+      await getAdminClient().provisioning.fileImport.postFileUpload(formData, { chunkSize: CHUNK_SIZE });
       setUploadedFile(file.name);
       message.success(originFiles.length > 1
         ? `${originFiles.length} files zipped and uploaded`
@@ -230,7 +231,7 @@ export default function FileImportPage() {
 
       {importResult && step === 3 && (
         <Card title="Import Complete">
-          <Alert type="success" message="File imported successfully" style={{ marginBottom: 12 }} />
+          <Alert type="success" title="File imported successfully" style={{ marginBottom: 12 }} />
           <Table<FileProcessResponse>
             columns={resultColumns}
             dataSource={importResult}
