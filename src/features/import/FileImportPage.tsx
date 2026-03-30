@@ -211,7 +211,7 @@ export default function FileImportPage() {
         </Card>
       )}
 
-      {error && <Alert type="error" message={error} style={{ marginBottom: 12 }} />}
+      {error && <Alert type="error" title={error} style={{ marginBottom: 12 }} />}
 
       {dryResult && step === 2 && (
         <Card title="Dry Run Result">
