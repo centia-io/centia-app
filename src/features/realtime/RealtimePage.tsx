@@ -25,6 +25,7 @@ export default function RealtimePage() {
   const [error, setError] = useState<string | null>(null);
   const [events, setEvents] = useState<EventEntry[]>([]);
   const [subscriptions, setSubscriptions] = useState<SubscriptionRequest[]>([]);
+  const subscriptionsRef = useRef<SubscriptionRequest[]>([]);
 
   const handleBatch = useCallback((msg: BatchMessage) => {
     const now = new Date();
@@ -32,20 +33,23 @@ export default function RealtimePage() {
     const newEvents: EventEntry[] = [];
 
     for (const [rel, data] of Object.entries(msg.batch[msg.db] ?? {})) {
-      for (const op of ['INSERT', 'UPDATE', 'DELETE'] as const) {
-        if (data[op]) {
-          for (const row of data[op]!) {
-            newEvents.push({
-              id: ++idCounter.current,
-              time,
-              op,
-              rel,
-              data: Array.isArray(row) ? { values: row } : row,
-            });
+      const hasOps = data.INSERT || data.UPDATE || data.DELETE;
+      if (hasOps) {
+        for (const op of ['INSERT', 'UPDATE', 'DELETE'] as const) {
+          if (data[op]) {
+            for (const row of data[op]!) {
+              newEvents.push({
+                id: ++idCounter.current,
+                time,
+                op,
+                rel,
+                data: Array.isArray(row) ? { values: row } : row,
+              });
+            }
           }
         }
-      }
-      if (data.full_data) {
+      } else if (data.full_data) {
+        // full_data without typed ops — show as UPDATE
         for (const row of data.full_data) {
           newEvents.push({
             id: ++idCounter.current,
@@ -75,7 +79,7 @@ export default function RealtimePage() {
     ws.on('open', () => {
       setConnected(true);
       // Re-register existing subscriptions on reconnect
-      for (const sub of subscriptions) {
+      for (const sub of subscriptionsRef.current) {
         ws.subscribe(sub);
       }
     });
@@ -96,14 +100,22 @@ export default function RealtimePage() {
   };
 
   const handleSubscribe = (sub: SubscriptionRequest) => {
-    setSubscriptions((prev) => [...prev, sub]);
+    setSubscriptions((prev) => {
+      const next = [...prev, sub];
+      subscriptionsRef.current = next;
+      return next;
+    });
     if (wsRef.current?.connected) {
       wsRef.current.subscribe(sub);
     }
   };
 
   const handleRemoveSubscription = (id: string) => {
-    setSubscriptions((prev) => prev.filter((s) => s.id !== id));
+    setSubscriptions((prev) => {
+      const next = prev.filter((s) => s.id !== id);
+      subscriptionsRef.current = next;
+      return next;
+    });
   };
 
   return (
