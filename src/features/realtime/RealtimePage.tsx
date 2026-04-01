@@ -14,7 +14,6 @@ import EventLog from './EventLog';
 import type { EventEntry } from './EventLog';
 
 const MAX_EVENTS = 500;
-const WS_HOST = 'wss://event.centia.io';
 
 export default function RealtimePage() {
   const { token: themeToken } = theme.useToken();
@@ -71,7 +70,7 @@ export default function RealtimePage() {
   const connect = () => {
     setError(null);
     const ws = new Ws({
-      host: WS_HOST,
+      host: import.meta.env.VITE_CENTIA_WS_HOST,
       reconnect: true,
       reconnectInterval: 3000,
     });
