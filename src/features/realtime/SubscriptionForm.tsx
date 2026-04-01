@@ -51,7 +51,7 @@ export default function SubscriptionForm({ subscriptions, onSubscribe, onRemove,
     <div>
       <Form form={form} layout="vertical" size="small" onFinish={handleSubmit}>
         <Form.Item name="id" label="ID" rules={[{ required: true, message: 'Required' }]}>
-          <Input placeholder="my-subscription" disabled={disabled} />
+          <Input placeholder="my-subscription" />
         </Form.Item>
         <Form.Item name="schema" label="Schema" rules={[{ required: true }]}>
           <Select
@@ -61,21 +61,19 @@ export default function SubscriptionForm({ subscriptions, onSubscribe, onRemove,
               setSchema(v);
               form.setFieldValue('rel', undefined);
             }}
-            disabled={disabled}
           />
         </Form.Item>
         <Form.Item name="rel" label="Table" rules={[{ required: true }]}>
           <Select
             placeholder="Table"
             options={tables?.map((t) => ({ label: t, value: t }))}
-            disabled={disabled || !schema}
+            disabled={!schema}
           />
         </Form.Item>
         <Form.Item name="op" label="Operation">
           <Select
             placeholder="All"
             allowClear
-            disabled={disabled}
             options={[
               { label: 'INSERT', value: 'INSERT' },
               { label: 'UPDATE', value: 'UPDATE' },
@@ -84,10 +82,10 @@ export default function SubscriptionForm({ subscriptions, onSubscribe, onRemove,
           />
         </Form.Item>
         <Form.Item name="where" label="Where">
-          <Input placeholder="status = 'active'" disabled={disabled} />
+          <Input placeholder="status = 'active'" />
         </Form.Item>
         <Form.Item name="columns" label="Columns">
-          <Input placeholder="id,name,email" disabled={disabled} />
+          <Input placeholder="id,name,email" />
         </Form.Item>
         <Form.Item>
           <Button
