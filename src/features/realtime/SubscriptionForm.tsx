@@ -92,7 +92,6 @@ export default function SubscriptionForm({ subscriptions, onSubscribe, onRemove,
             type="primary"
             htmlType="submit"
             icon={<PlusOutlined />}
-            disabled={disabled}
             block
           >
             Subscribe
