@@ -105,8 +105,12 @@ export default function RealtimePage() {
       subscriptionsRef.current = next;
       return next;
     });
-    if (wsRef.current?.connected) {
-      wsRef.current.subscribe(sub);
+    try {
+      if (wsRef.current?.connected) {
+        wsRef.current.subscribe(sub);
+      }
+    } catch (e: any) {
+      setError(e.message ?? 'Failed to subscribe');
     }
   };
 
@@ -186,7 +190,6 @@ export default function RealtimePage() {
                     subscriptions={subscriptions}
                     onSubscribe={handleSubscribe}
                     onRemove={handleRemoveSubscription}
-                    disabled={!connected}
                   />
                 ),
               },

@@ -10,10 +10,9 @@ interface Props {
   subscriptions: SubscriptionRequest[];
   onSubscribe: (sub: SubscriptionRequest) => void;
   onRemove: (id: string) => void;
-  disabled: boolean;
 }
 
-export default function SubscriptionForm({ subscriptions, onSubscribe, onRemove, disabled }: Props) {
+export default function SubscriptionForm({ subscriptions, onSubscribe, onRemove }: Props) {
   const [form] = Form.useForm();
   const [schema, setSchema] = useState<string | undefined>();
 
