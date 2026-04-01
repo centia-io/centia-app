@@ -13,6 +13,7 @@ import {
   CloudUploadOutlined,
   BranchesOutlined,
   EnvironmentOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -26,6 +27,7 @@ const items = [
   { type: 'group' as const, label: 'Data', children: [
     { key: '/sql', icon: <CodeOutlined />, label: 'SQL Console' },
     { key: '/graphql', icon: <ApiOutlined />, label: 'GraphQL Explorer' },
+    { key: '/realtime', icon: <ThunderboltOutlined />, label: 'Realtime' },
   ]},
   { type: 'group' as const, label: 'API', children: [
     { key: '/rpc', icon: <FunctionOutlined />, label: 'JSON-RPC Methods' },

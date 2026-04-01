@@ -12,6 +12,7 @@ const SqlConsolePage = lazy(() => import('./features/sql/SqlConsolePage'));
 const RpcListPage = lazy(() => import('./features/rpc/RpcListPage'));
 const RpcFormPage = lazy(() => import('./features/rpc/RpcFormPage'));
 const GraphqlExplorerPage = lazy(() => import('./features/graphql/GraphqlExplorerPage'));
+const RealtimePage = lazy(() => import('./features/realtime/RealtimePage'));
 const UserListPage = lazy(() => import('./features/users/UserListPage'));
 const ClientListPage = lazy(() => import('./features/clients/ClientListPage'));
 const RuleListPage = lazy(() => import('./features/rules/RuleListPage'));
@@ -46,6 +47,7 @@ export const routes: RouteObject[] = [
       { path: 'rpc', element: <RpcListPage /> },
       { path: 'rpc/:method', element: <RpcFormPage /> },
       { path: 'graphql', element: <GraphqlExplorerPage /> },
+      { path: 'realtime', element: <RealtimePage /> },
       { path: 'users', element: <UserListPage /> },
       { path: 'clients', element: <ClientListPage /> },
       { path: 'rules', element: <RuleListPage /> },
