@@ -47,7 +47,7 @@ export async function setEventsEnabled(
   const res = await fetch(
     `${host()}/api/v4/schemas/${schema}/tables/${table}/events`,
     {
-      method: 'POST',
+      method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token()}`,
