@@ -3,7 +3,7 @@ import { Button, Select, Space, Spin, Alert, Typography } from 'antd';
 import { PlayCircleOutlined } from '@ant-design/icons';
 import { getSql } from '../../baas/client';
 import { getAdminClient } from '../../baas/adminClient';
-import { useQuery } from '@tanstack/react-query';
+import { useSchemaNames } from '../../hooks/useSchemaNames';
 import { sql as sqlLang, PostgreSQL, type SQLNamespace } from '@codemirror/lang-sql';
 
 const DQL_KEYWORDS = new Set([
@@ -32,11 +32,8 @@ export default function SqlConsolePage() {
   const [selectedSchemas, setSelectedSchemas] = useState<string[]>([]);
   const [sqlSchema, setSqlSchema] = useState<SQLNamespace>({});
 
-  const { data: schemasData, isLoading: schemasLoading, error: schemasError } = useQuery({
-    queryKey: ['schemas'],
-    queryFn: async () => await getAdminClient().provisioning.schemas.getSchema() as any[],
-  });
-  const schemas: string[] = (schemasData?.map((s: any) => s.name) ?? []).sort();
+  const { data: schemasData, isLoading: schemasLoading, error: schemasError } = useSchemaNames();
+  const schemas: string[] = (schemasData?.map((s) => s.name) ?? []).sort();
 
   useEffect(() => {
     if (selectedSchemas.length === 0) { setSqlSchema({}); return; }

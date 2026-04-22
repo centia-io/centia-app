@@ -2,16 +2,12 @@ import { useState } from 'react';
 import { Form, Input, Select, Button, Card, Alert } from 'antd';
 import { message } from '../../utils/message';
 import { BranchesOutlined } from '@ant-design/icons';
-import { useQuery } from '@tanstack/react-query';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
+import { useSchemaNames } from '../../hooks/useSchemaNames';
 
 export default function GitCommitPage() {
-  const { data: schemasData } = useQuery({
-    queryKey: ['schemas'],
-    queryFn: async () => await getAdminClient().provisioning.schemas.getSchema() as any[],
-    staleTime: 30_000,
-  });
-  const schemas: string[] = (schemasData?.map((s: any) => s.name) ?? []).sort();
+  const { data: schemasData } = useSchemaNames();
+  const schemas: string[] = (schemasData?.map((s) => s.name) ?? []).sort();
 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);

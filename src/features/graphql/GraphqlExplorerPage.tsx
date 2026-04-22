@@ -2,8 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { Select, Space, Spin, Alert, Button, Card, Tree, Typography } from 'antd';
 import { PlayCircleOutlined, FileTextOutlined } from '@ant-design/icons';
 import { getGql } from '../../baas/client';
-import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
-import { useQuery } from '@tanstack/react-query';
+import { getErrorMessage } from '../../baas/adminClient';
+import { useSchemaNames } from '../../hooks/useSchemaNames';
 import { buildClientSchema, getIntrospectionQuery, type IntrospectionQuery, type GraphQLSchema } from 'graphql';
 import { graphql as graphqlExt } from 'cm6-graphql';
 import CodeEditor from '../../components/CodeEditor';
@@ -44,11 +44,8 @@ function buildSchemaTree(introSchema: any): DataNode[] {
 }
 
 export default function GraphqlExplorerPage() {
-  const { data: schemasData, isLoading: schemasLoading, error: schemasError, refetch } = useQuery({
-    queryKey: ['schemas'],
-    queryFn: async () => await getAdminClient().provisioning.schemas.getSchema() as any[],
-  });
-  const schemas: string[] = (schemasData?.map((s: any) => s.name) ?? []).sort();
+  const { data: schemasData, isLoading: schemasLoading, error: schemasError, refetch } = useSchemaNames();
+  const schemas: string[] = (schemasData?.map((s) => s.name) ?? []).sort();
 
   const [schema, setSchema] = useState('');
   const [query, setQuery] = useState('{\n  \n}');

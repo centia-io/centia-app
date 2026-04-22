@@ -2,8 +2,7 @@
 import { useState } from 'react';
 import { Button, Input, Select, List, Space, Form, Tag } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import { useQuery } from '@tanstack/react-query';
-import { getAdminClient } from '../../baas/adminClient';
+import { useSchemaNames, useTableNames } from '../../hooks/useSchemaNames';
 import type { SubscriptionRequest } from '@centia-io/sdk';
 
 interface Props {
@@ -16,22 +15,11 @@ export default function SubscriptionForm({ subscriptions, onSubscribe, onRemove 
   const [form] = Form.useForm();
   const [schema, setSchema] = useState<string | undefined>();
 
-  const { data: schemas } = useQuery({
-    queryKey: ['schemas'],
-    queryFn: async () => {
-      const res = await getAdminClient().provisioning.schemas.getSchema() as any[];
-      return res.map((s: any) => s.name).sort() as string[];
-    },
-  });
+  const { data: schemasData } = useSchemaNames();
+  const schemas: string[] = (schemasData?.map((s) => s.name) ?? []).sort();
 
-  const { data: tables } = useQuery({
-    queryKey: ['tables-for-sub', schema],
-    queryFn: async () => {
-      const detail = await getAdminClient().provisioning.schemas.getSchema(schema!) as any;
-      return (detail?.tables ?? []).map((t: any) => t.name).sort() as string[];
-    },
-    enabled: !!schema,
-  });
+  const { data: tablesData } = useTableNames(schema);
+  const tables: string[] = (tablesData?.map((t) => t.name) ?? []).sort();
 
   const handleSubmit = (values: any) => {
     const sub: SubscriptionRequest = {

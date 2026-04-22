@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Table, Button, Space, Drawer, Modal, Form, Input, InputNumber, Select, Checkbox, Spin, Alert, Tabs, Typography } from 'antd';
+import { Table, Button, Space, Drawer, Modal, Form, Input, InputNumber, Select, Checkbox, Spin, Alert, Tabs, Typography, Tag } from 'antd';
 import { message } from '../../utils/message';
 import { PlusOutlined, DeleteOutlined, ArrowLeftOutlined, SaveOutlined, CodeOutlined, EditOutlined, HolderOutlined } from '@ant-design/icons';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
@@ -18,9 +18,18 @@ import { rollback } from '../../data/optimistic';
 
 // ──── Types ────
 
+type RelationType = 'TABLE' | 'VIEW' | 'MATERIALIZED VIEW' | 'FOREIGN TABLE';
+
 type SchemaDetailResponse = {
   name: string;
-  tables?: Array<{ name: string; columns?: unknown[] }>;
+  tables?: Array<{ name: string; columns?: unknown[]; _type?: RelationType }>;
+};
+
+const RELATION_TYPE_META: Record<RelationType, { label: string; color: string }> = {
+  'TABLE': { label: 'TABLE', color: 'blue' },
+  'VIEW': { label: 'VIEW', color: 'green' },
+  'MATERIALIZED VIEW': { label: 'MAT. VIEW', color: 'purple' },
+  'FOREIGN TABLE': { label: 'FOREIGN', color: 'orange' },
 };
 
 interface TableMeta {
@@ -95,6 +104,7 @@ function TablesPanel({ schema }: { schema: string }) {
     data?.tables?.map((t) => ({
       name: t.name,
       columnCount: t.columns?.length ?? 0,
+      relationType: (t._type ?? 'TABLE') as RelationType,
     })) ?? [];
 
   const { data: metaData, isLoading: metaLoading } = useMetaQuery(schema, tables.length > 0);
@@ -416,6 +426,13 @@ function TablesPanel({ schema }: { schema: string }) {
           { title: 'Name', dataIndex: 'name', key: 'name', width: 160,
             sorter: (a, b) => a.name.localeCompare(b.name),
             render: (name: string) => <a onClick={() => navigate(`/schemas/${schema}/tables/${name}`)}>{name}</a>,
+          },
+          { title: 'Type', dataIndex: 'relationType', key: 'relationType', width: 110,
+            sorter: (a, b) => a.relationType.localeCompare(b.relationType),
+            render: (v: RelationType) => {
+              const meta = RELATION_TYPE_META[v] ?? { label: v, color: 'default' };
+              return <Tag color={meta.color} style={{ margin: 0 }}>{meta.label}</Tag>;
+            },
           },
           { title: 'Columns', dataIndex: 'columnCount', key: 'columnCount', width: 80,
             sorter: (a, b) => a.columnCount - b.columnCount,

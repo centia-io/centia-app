@@ -3,7 +3,7 @@ import { Upload, Button, Form, Input, Select, Switch, Space, Steps, Card, Alert,
 import { message } from '../../utils/message';
 import { UploadOutlined, CloudUploadOutlined } from '@ant-design/icons';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
-import { useQuery } from '@tanstack/react-query';
+import { useSchemaNames } from '../../hooks/useSchemaNames';
 import type { UploadFile } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { FileProcessResponse } from '@centia-io/sdk';
@@ -29,12 +29,8 @@ const getResultColumns = (hasSsrs: boolean): ColumnsType<FileProcessResponse> =>
 ];
 
 export default function FileImportPage() {
-  const { data: schemasData } = useQuery({
-    queryKey: ['schemas'],
-    queryFn: async () => await getAdminClient().provisioning.schemas.getSchema() as any[],
-    staleTime: 30_000,
-  });
-  const schemas: string[] = (schemasData?.map((s: any) => s.name) ?? []).sort();
+  const { data: schemasData } = useSchemaNames();
+  const schemas: string[] = (schemasData?.map((s) => s.name) ?? []).sort();
 
   const [step, setStep] = useState(0);
   const [uploadedFile, setUploadedFile] = useState<string | null>(null);

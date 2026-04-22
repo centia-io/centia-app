@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Table, Button, Space, Input, InputNumber, Switch, Checkbox, Modal, Form, Select, Tag, Spin } from 'antd';
+import { Table, Button, Space, Input, InputNumber, Switch, Checkbox, Drawer, Form, Select, Tag, Spin } from 'antd';
 import { message } from '../../utils/message';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SaveOutlined, HolderOutlined } from '@ant-design/icons';
 import { useMetaQuery, invalidateMeta } from '../../hooks/useMetaQuery';
@@ -344,15 +344,17 @@ export default function ColumnEditor({ schema, table, columns, onRefresh }: Prop
           invalidateMeta(schema);
         }}
       />
-      <Modal
+      <Drawer
         title={`Bulk Edit Field Metadata (${selectedRows.length} columns)`}
         open={bulkOpen}
-        onCancel={() => setBulkOpen(false)}
-        onOk={saveBulk}
-        confirmLoading={savingBulk}
-        okText="Apply"
-        width={450}
+        onClose={() => setBulkOpen(false)}
+        width={500}
         destroyOnClose
+        extra={
+          <Button type="primary" onClick={saveBulk} loading={savingBulk}>
+            Apply
+          </Button>
+        }
       >
         <p style={{ marginBottom: 16, color: '#888' }}>
           Only checked fields will be applied. Unchecked fields remain unchanged.
@@ -368,7 +370,7 @@ export default function ColumnEditor({ schema, table, columns, onRefresh }: Prop
             <InputNumber style={{ width: '100%' }} placeholder="Sort ID" disabled={!bulkEnabled.sort_id} />
           </Form.Item>
         </Form>
-      </Modal>
+      </Drawer>
     </div>
   );
 }

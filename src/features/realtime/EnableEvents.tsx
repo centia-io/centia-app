@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Select, Switch, List, Spin, App } from 'antd';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getAdminClient } from '../../baas/adminClient';
+import { useSchemaNames } from '../../hooks/useSchemaNames';
 import { getEventsStatus, setEventsEnabled } from './eventsApi';
 
 export default function EnableEvents() {
@@ -11,13 +11,8 @@ export default function EnableEvents() {
   const [schema, setSchema] = useState<string | undefined>();
   const [togglingTable, setTogglingTable] = useState<string | null>(null);
 
-  const { data: schemas, isLoading: schemasLoading } = useQuery({
-    queryKey: ['schemas'],
-    queryFn: async () => {
-      const res = await getAdminClient().provisioning.schemas.getSchema() as any[];
-      return res.map((s: any) => s.name).sort() as string[];
-    },
-  });
+  const { data: schemasData, isLoading: schemasLoading } = useSchemaNames();
+  const schemas: string[] = (schemasData?.map((s) => s.name) ?? []).sort();
 
   const { data: tableStatuses, isLoading: tablesLoading } = useQuery({
     queryKey: ['events-status', schema],

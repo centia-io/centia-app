@@ -17,8 +17,8 @@ export interface TableEventStatus {
 
 export async function getEventsStatus(schema: string): Promise<TableEventStatus[]> {
   // No bulk endpoint — fetch table list, then check each individually
-  const detail = await getAdminClient().provisioning.schemas.getSchema(schema) as any;
-  const tables: string[] = (detail?.tables ?? []).map((t: any) => t.name).sort();
+  const res = await getAdminClient().provisioning.tables.getTable(schema, undefined, { namesOnly: true }) as any[];
+  const tables: string[] = res.map((t: any) => t.name).sort();
 
   const results = await Promise.all(
     tables.map(async (table): Promise<TableEventStatus> => {
