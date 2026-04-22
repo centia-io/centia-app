@@ -1,125 +1,26 @@
 // src/features/realtime/RealtimePage.tsx
-import { useState, useRef, useCallback } from 'react';
 import { Button, Alert, Collapse, Space, theme } from 'antd';
 import {
   ThunderboltOutlined,
   LinkOutlined,
   DisconnectOutlined,
 } from '@ant-design/icons';
-import { Ws } from '@centia-io/sdk';
-import type { BatchMessage, SubscriptionRequest } from '@centia-io/sdk';
 import EnableEvents from './EnableEvents';
 import SubscriptionForm from './SubscriptionForm';
 import EventLog from './EventLog';
-import type { EventEntry } from './EventLog';
-
-const MAX_EVENTS = 500;
+import {
+  useRealtimeStore,
+  connect,
+  disconnect,
+  subscribe,
+  removeSubscription,
+  clearEvents,
+  clearError,
+} from './realtimeStore';
 
 export default function RealtimePage() {
   const { token: themeToken } = theme.useToken();
-  const wsRef = useRef<Ws | null>(null);
-  const idCounter = useRef(0);
-
-  const [connected, setConnected] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [events, setEvents] = useState<EventEntry[]>([]);
-  const [subscriptions, setSubscriptions] = useState<SubscriptionRequest[]>([]);
-  const subscriptionsRef = useRef<SubscriptionRequest[]>([]);
-
-  const handleBatch = useCallback((msg: BatchMessage) => {
-    const now = new Date();
-    const time = now.toLocaleTimeString('da-DK', { hour12: false });
-    const newEvents: EventEntry[] = [];
-
-    for (const [rel, data] of Object.entries(msg.batch[msg.db] ?? {})) {
-      const hasOps = data.INSERT || data.UPDATE || data.DELETE;
-      if (hasOps) {
-        for (const op of ['INSERT', 'UPDATE', 'DELETE'] as const) {
-          if (data[op]) {
-            for (const row of data[op]!) {
-              newEvents.push({
-                id: ++idCounter.current,
-                time,
-                op,
-                rel,
-                data: Array.isArray(row) ? { values: row } : row,
-              });
-            }
-          }
-        }
-      } else if (data.full_data) {
-        // full_data without typed ops — show as UPDATE
-        for (const row of data.full_data) {
-          newEvents.push({
-            id: ++idCounter.current,
-            time,
-            op: 'UPDATE',
-            rel,
-            data: row,
-          });
-        }
-      }
-    }
-
-    setEvents((prev) => {
-      const merged = [...prev, ...newEvents];
-      return merged.length > MAX_EVENTS ? merged.slice(-MAX_EVENTS) : merged;
-    });
-  }, []);
-
-  const connect = () => {
-    setError(null);
-    const ws = new Ws({
-      host: import.meta.env.VITE_CENTIA_WS_HOST,
-      reconnect: true,
-      reconnectInterval: 3000,
-    });
-
-    ws.on('open', () => {
-      setConnected(true);
-      // Re-register existing subscriptions on reconnect
-      for (const sub of subscriptionsRef.current) {
-        ws.subscribe(sub);
-      }
-    });
-    ws.on('batch', handleBatch);
-    ws.on('error', (msg) => {
-      setError(`${msg.error}: ${msg.message}`);
-    });
-    ws.on('close', () => setConnected(false));
-
-    ws.connect();
-    wsRef.current = ws;
-  };
-
-  const disconnect = () => {
-    wsRef.current?.disconnect();
-    wsRef.current = null;
-    setConnected(false);
-  };
-
-  const handleSubscribe = (sub: SubscriptionRequest) => {
-    setSubscriptions((prev) => {
-      const next = [...prev, sub];
-      subscriptionsRef.current = next;
-      return next;
-    });
-    try {
-      if (wsRef.current?.connected) {
-        wsRef.current.subscribe(sub);
-      }
-    } catch (e: any) {
-      setError(e.message ?? 'Failed to subscribe');
-    }
-  };
-
-  const handleRemoveSubscription = (id: string) => {
-    setSubscriptions((prev) => {
-      const next = prev.filter((s) => s.id !== id);
-      subscriptionsRef.current = next;
-      return next;
-    });
-  };
+  const { connected, error, events, subscriptions } = useRealtimeStore();
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -148,7 +49,7 @@ export default function RealtimePage() {
           type="error"
           message={error}
           closable
-          onClose={() => setError(null)}
+          onClose={clearError}
           style={{ marginBottom: 12 }}
         />
       )}
@@ -187,8 +88,8 @@ export default function RealtimePage() {
                 children: (
                   <SubscriptionForm
                     subscriptions={subscriptions}
-                    onSubscribe={handleSubscribe}
-                    onRemove={handleRemoveSubscription}
+                    onSubscribe={subscribe}
+                    onRemove={removeSubscription}
                   />
                 ),
               },
@@ -204,7 +105,7 @@ export default function RealtimePage() {
             flexDirection: 'column',
           }}
         >
-          <EventLog events={events} onClear={() => setEvents([])} />
+          <EventLog events={events} onClear={clearEvents} />
         </div>
       </div>
     </div>

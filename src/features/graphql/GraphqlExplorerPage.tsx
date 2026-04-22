@@ -9,6 +9,7 @@ import { graphql as graphqlExt } from 'cm6-graphql';
 import CodeEditor from '../../components/CodeEditor';
 import ResultTable from '../../components/ResultTable';
 import type { DataNode } from 'antd/es/tree';
+import { graphqlStore, useGraphqlStore } from './graphqlStore';
 
 function formatType(t: any): string {
   if (!t) return '';
@@ -47,12 +48,7 @@ export default function GraphqlExplorerPage() {
   const { data: schemasData, isLoading: schemasLoading, error: schemasError, refetch } = useSchemaNames();
   const schemas: string[] = (schemasData?.map((s) => s.name) ?? []).sort();
 
-  const [schema, setSchema] = useState('');
-  const [query, setQuery] = useState('{\n  \n}');
-  const [variables, setVariables] = useState('{}');
-  const [result, setResult] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const { schema, query, variables, result, error, loading } = useGraphqlStore();
   const [schemaTree, setSchemaTree] = useState<DataNode[]>([]);
   const [introLoading, setIntroLoading] = useState(false);
   const [gqlSchema, setGqlSchema] = useState<GraphQLSchema | null>(null);
@@ -78,20 +74,20 @@ export default function GraphqlExplorerPage() {
 
   const run = async () => {
     if (!schema) return;
-    setLoading(true);
-    setError(null);
-    setResult(null);
+    graphqlStore.set({ loading: true, error: null, result: null });
     try {
       const vars = JSON.parse(variables);
       const res = await getGql(schema).request({ query, variables: vars });
       if (res.errors?.length) {
-        setError(res.errors.map((e: { message: string }) => e.message).join('\n'));
+        graphqlStore.set({
+          error: res.errors.map((e: { message: string }) => e.message).join('\n'),
+        });
       }
-      setResult(res.data);
+      graphqlStore.set({ result: res.data });
     } catch (e: any) {
-      setError(e.message ?? String(e));
+      graphqlStore.set({ error: e.message ?? String(e) });
     } finally {
-      setLoading(false);
+      graphqlStore.set({ loading: false });
     }
   };
 
@@ -104,7 +100,7 @@ export default function GraphqlExplorerPage() {
         <Select
           placeholder="Select schema"
           value={schema || undefined}
-          onChange={(v) => { setSchema(v); setResult(null); setError(null); }}
+          onChange={(v) => graphqlStore.set({ schema: v, result: null, error: null })}
           options={schemas.map((s) => ({ label: s, value: s }))}
           style={{ width: 200 }}
           loading={schemasLoading}
@@ -144,14 +140,19 @@ export default function GraphqlExplorerPage() {
             <Typography.Text strong>Query</Typography.Text>
             <CodeEditor
               value={query}
-              onChange={setQuery}
+              onChange={(v) => graphqlStore.set({ query: v })}
               language="graphql"
               height="300px"
               onRun={run}
               extensions={gqlExtensions}
             />
             <Typography.Text strong style={{ display: 'block', marginTop: 8 }}>Variables</Typography.Text>
-            <CodeEditor value={variables} onChange={setVariables} language="json" height="150px" />
+            <CodeEditor
+              value={variables}
+              onChange={(v) => graphqlStore.set({ variables: v })}
+              language="json"
+              height="150px"
+            />
             <Space style={{ marginTop: 12, marginBottom: 12 }}>
               <Button type="primary" icon={<PlayCircleOutlined />} onClick={run} loading={loading}>
                 Run (Ctrl+Enter)

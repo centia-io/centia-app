@@ -5,6 +5,7 @@ import { getSql } from '../../baas/client';
 import { getAdminClient } from '../../baas/adminClient';
 import { useSchemaNames } from '../../hooks/useSchemaNames';
 import { sql as sqlLang, PostgreSQL, type SQLNamespace } from '@codemirror/lang-sql';
+import { sqlStore, useSqlStore } from './sqlStore';
 
 const DQL_KEYWORDS = new Set([
   'select', 'from', 'where', 'and', 'or', 'not', 'in', 'between', 'like', 'ilike',
@@ -23,13 +24,7 @@ import CodeEditor from '../../components/CodeEditor';
 import ResultTable from '../../components/ResultTable';
 
 export default function SqlConsolePage() {
-  const [query, setQuery] = useState('SELECT 1 AS test;');
-  const [format, setFormat] = useState('json');
-  const [result, setResult] = useState<any>(null);
-  const [rawResult, setRawResult] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedSchemas, setSelectedSchemas] = useState<string[]>([]);
+  const { query, format, selectedSchemas, result, rawResult, error, loading } = useSqlStore();
   const [sqlSchema, setSqlSchema] = useState<SQLNamespace>({});
 
   const { data: schemasData, isLoading: schemasLoading, error: schemasError } = useSchemaNames();
@@ -72,17 +67,14 @@ export default function SqlConsolePage() {
   );
 
   const run = async () => {
-    setLoading(true);
-    setError(null);
-    setResult(null);
-    setRawResult(null);
+    sqlStore.set({ loading: true, error: null, result: null, rawResult: null });
     try {
       const res = await getSql().exec({ q: query });
-      setResult(res);
+      sqlStore.set({ result: res });
     } catch (e: any) {
-      setError(e.message ?? String(e));
+      sqlStore.set({ error: e.message ?? String(e) });
     } finally {
-      setLoading(false);
+      sqlStore.set({ loading: false });
     }
   };
 
@@ -94,7 +86,7 @@ export default function SqlConsolePage() {
           mode="multiple"
           placeholder="Schemas for autocomplete"
           value={selectedSchemas}
-          onChange={setSelectedSchemas}
+          onChange={(v) => sqlStore.set({ selectedSchemas: v })}
           options={schemas.map((s) => ({ label: s, value: s }))}
           style={{ minWidth: 250 }}
           maxTagCount="responsive"
@@ -103,12 +95,22 @@ export default function SqlConsolePage() {
           notFoundContent={schemasLoading ? <Spin size="small" /> : schemasError ? 'Failed to load' : undefined}
         />
       </Space>
-      <CodeEditor value={query} onChange={setQuery} language="sql" height="200px" onRun={run} extensions={sqlExtensions} />
+      <CodeEditor
+        value={query}
+        onChange={(v) => sqlStore.set({ query: v })}
+        language="sql"
+        height="200px"
+        onRun={run}
+        extensions={sqlExtensions}
+      />
       <Space style={{ marginTop: 12, marginBottom: 12 }}>
         <Button type="primary" icon={<PlayCircleOutlined />} onClick={run} loading={loading}>
           Run (Ctrl+Enter)
         </Button>
-        <Select value={format} onChange={setFormat} style={{ width: 120 }}
+        <Select
+          value={format}
+          onChange={(v) => sqlStore.set({ format: v })}
+          style={{ width: 120 }}
           options={[
             { label: 'JSON', value: 'json' },
             { label: 'CSV', value: 'csv' },

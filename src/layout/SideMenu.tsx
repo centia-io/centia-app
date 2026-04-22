@@ -1,4 +1,5 @@
 import { Menu } from 'antd';
+import { useEffect, useRef } from 'react';
 import {
   DashboardOutlined,
   DatabaseOutlined,
@@ -47,16 +48,40 @@ const items = [
   ]},
 ];
 
+const sectionKeys = items
+  .flatMap((g) => g.children.map((c) => c.key as string))
+  .filter((k) => k !== '/')
+  .sort((a, b) => b.length - a.length);
+
+function findSection(pathname: string): string | undefined {
+  for (const key of sectionKeys) {
+    if (pathname === key || pathname.startsWith(key + '/')) return key;
+  }
+  return pathname === '/' ? '/' : undefined;
+}
+
 export default function SideMenu() {
   const navigate = useNavigate();
   const location = useLocation();
+  const lastPathBySection = useRef<Record<string, string>>({});
+
+  useEffect(() => {
+    const section = findSection(location.pathname);
+    if (section) {
+      lastPathBySection.current[section] = location.pathname + location.search;
+    }
+  }, [location.pathname, location.search]);
+
+  const handleClick = ({ key }: { key: string }) => {
+    navigate(lastPathBySection.current[key] ?? key);
+  };
 
   return (
     <Menu
       mode="inline"
-      selectedKeys={[location.pathname]}
+      selectedKeys={[findSection(location.pathname) ?? location.pathname]}
       items={items}
-      onClick={({ key }) => navigate(key)}
+      onClick={handleClick}
       style={{ borderRight: 0 }}
     />
   );
