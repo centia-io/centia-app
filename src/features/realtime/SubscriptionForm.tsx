@@ -2,7 +2,9 @@
 import { useState } from 'react';
 import { Button, Input, Select, List, Space, Form, Tag } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import { useSchemaNames, useTableNames } from '../../hooks/useSchemaNames';
+import { useQuery } from '@tanstack/react-query';
+import { useSchemaNames } from '../../hooks/useSchemaNames';
+import { getEventsStatus } from './eventsApi';
 import type { SubscriptionRequest } from '@centia-io/sdk';
 
 interface Props {
@@ -18,8 +20,13 @@ export default function SubscriptionForm({ subscriptions, onSubscribe, onRemove 
   const { data: schemasData } = useSchemaNames();
   const schemas: string[] = (schemasData?.map((s) => s.name) ?? []).sort();
 
-  const { data: tablesData } = useTableNames(schema);
-  const tables: string[] = (tablesData?.map((t) => t.name) ?? []).sort();
+  const { data: tableStatuses } = useQuery({
+    queryKey: ['events-status', schema],
+    queryFn: () => getEventsStatus(schema!),
+    enabled: !!schema,
+  });
+  // Only show tables with events enabled (views can't have events).
+  const tables: string[] = (tableStatuses ?? []).filter((t) => t.enabled).map((t) => t.table);
 
   const handleSubmit = (values: any) => {
     const sub: SubscriptionRequest = {

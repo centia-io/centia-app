@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import { ConfigProvider, App as AntApp, Spin, Flex, theme } from 'antd';
+import { ConfigProvider, App as AntApp, Spin, Flex, Empty, theme } from 'antd';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './auth/AuthProvider';
 import { routes } from './routes';
@@ -8,6 +8,7 @@ import { queryClient, initPersistence } from './data/queryClient';
 import OfflineBanner from './components/OfflineBanner';
 import { ThemeProvider, useTheme } from './theme/ThemeProvider';
 import { setMessageInstance } from './utils/message';
+import { setModalInstance } from './utils/modal';
 
 // Initialize IndexedDB persistence if VITE_CLIENT_FIRST_PERSIST=true
 initPersistence();
@@ -22,9 +23,10 @@ const Loading = () => (
   </Flex>
 );
 
-function MessageCapture() {
-  const { message } = AntApp.useApp();
+function AntdCapture() {
+  const { message, modal } = AntApp.useApp();
   setMessageInstance(message);
+  setModalInstance(modal);
   return null;
 }
 
@@ -36,9 +38,10 @@ function ThemedApp() {
         algorithm: resolved === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
         token: { colorPrimary: '#1677ff' },
       }}
+      renderEmpty={() => <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />}
     >
       <AntApp>
-        <MessageCapture />
+        <AntdCapture />
         <AuthProvider>
           <OfflineBanner />
           <Suspense fallback={<Loading />}>

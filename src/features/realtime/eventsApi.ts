@@ -16,7 +16,7 @@ export interface TableEventStatus {
 }
 
 export async function getEventsStatus(schema: string): Promise<TableEventStatus[]> {
-  const res = await getAdminClient().provisioning.tables.getTable(schema) as any[];
+  const res = await getAdminClient().provisioning.tables.getTable(schema, undefined, { namesOnly: true }) as any[];
   return res
     .filter((t) => t._type === 'TABLE')
     .map((t) => ({ table: t.name, enabled: !!t._events }))

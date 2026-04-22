@@ -43,7 +43,15 @@ interface TableMeta {
 // ──── Drag helpers ────
 
 function SortableRow(props: any) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+  // Placeholder row (empty state) has no data-row-key — render plain tr.
+  if (props['data-row-key'] === undefined) {
+    return <tr {...props} />;
+  }
+  return <SortableDataRow {...props} />;
+}
+
+function SortableDataRow(props: any) {
+  const { attributes, setNodeRef, transform, transition, isDragging } = useSortable({
     id: props['data-row-key'],
   });
   const style: React.CSSProperties = {

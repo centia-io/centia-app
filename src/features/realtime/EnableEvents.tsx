@@ -4,6 +4,7 @@ import { Select, Switch, List, Spin, App } from 'antd';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSchemaNames } from '../../hooks/useSchemaNames';
 import { getEventsStatus, setEventsEnabled } from './eventsApi';
+import { optimisticUpdate, rollback } from '../../data/optimistic';
 
 export default function EnableEvents() {
   const { message } = App.useApp();
@@ -21,11 +22,14 @@ export default function EnableEvents() {
   });
 
   const handleToggle = async (table: string, enabled: boolean) => {
+    const queryKey = ['events-status', schema];
+    const ctx = optimisticUpdate(queryKey, 'table', table, { enabled });
     setTogglingTable(table);
     try {
       await setEventsEnabled(schema!, table, enabled);
-      queryClient.invalidateQueries({ queryKey: ['events-status', schema] });
+      queryClient.invalidateQueries({ queryKey });
     } catch (e: any) {
+      rollback(ctx);
       message.error(e.message ?? 'Failed to toggle events');
     } finally {
       setTogglingTable(null);
