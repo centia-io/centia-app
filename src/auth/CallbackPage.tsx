@@ -6,6 +6,11 @@ export default function CallbackPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (!params.get('code') && !params.get('error')) {
+      window.location.replace(`${import.meta.env.VITE_BASE_PATH || '/'}login`);
+      return;
+    }
     getCodeFlow()
       .redirectHandle()
       .then((ok: boolean) => {
