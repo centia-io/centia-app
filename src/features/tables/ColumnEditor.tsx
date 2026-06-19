@@ -4,7 +4,6 @@ import { message } from '../../utils/message';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SaveOutlined, HolderOutlined } from '@ant-design/icons';
 import { useMetaQuery, invalidateMeta } from '../../hooks/useMetaQuery';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
-import type { MetadataRelationInfo } from '@centia-io/sdk';
 import { confirmDelete } from '../../components/ConfirmDelete';
 import ColumnFormDrawer from './ColumnFormDrawer';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
@@ -100,7 +99,7 @@ export default function ColumnEditor({ schema, table, columns, onRefresh }: Prop
                 sort_id: merged.sort_id,
               },
             },
-          } as unknown as MetadataRelationInfo,
+          },
         },
       }).catch((e: any) => {
         if (e?.status === 204) return;

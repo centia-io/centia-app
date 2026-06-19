@@ -9,7 +9,6 @@ import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } 
 import { CSS } from '@dnd-kit/utilities';
 import { useMetaQuery, invalidateMeta } from '../../hooks/useMetaQuery';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
-import type { MetadataRelationInfo } from '@centia-io/sdk';
 import BulkPrivilegeModal from './BulkPrivilegeModal';
 import SchemaForm from '../../components/SchemaForm';
 import { testPropertiesSchema } from '../../data/testPropertiesSchema';
@@ -163,7 +162,7 @@ function TablesPanel({ schema }: { schema: string }) {
             group: merged.group || null,
             sort_id: merged.sort_id,
             tags: merged.tags?.length ? merged.tags : null,
-          } as unknown as MetadataRelationInfo,
+          },
         },
       }).catch((e: any) => {
         if (e?.status === 204) return;
@@ -204,7 +203,7 @@ function TablesPanel({ schema }: { schema: string }) {
         relations: {
           [qualifiedName]: {
             properties: Object.keys(cleaned).length ? cleaned : null,
-          } as unknown as MetadataRelationInfo,
+          },
         },
       }).catch((e: any) => {
         if (e?.status === 204) return;
