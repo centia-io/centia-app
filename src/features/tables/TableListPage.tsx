@@ -9,6 +9,7 @@ import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } 
 import { CSS } from '@dnd-kit/utilities';
 import { useMetaQuery, invalidateMeta } from '../../hooks/useMetaQuery';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
+import BulkPrivilegeModal from './BulkPrivilegeModal';
 import SchemaForm from '../../components/SchemaForm';
 import { testPropertiesSchema } from '../../data/testPropertiesSchema';
 import { confirmDelete } from '../../components/ConfirmDelete';
@@ -88,6 +89,7 @@ function TablesPanel({ schema }: { schema: string }) {
   const [propsForm] = Form.useForm();
   const [savingProps, setSavingProps] = useState(false);
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
+  const [privOpen, setPrivOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkForm] = Form.useForm();
   const [bulkEnabled, setBulkEnabled] = useState<Record<string, boolean>>({});
@@ -412,6 +414,11 @@ function TablesPanel({ schema }: { schema: string }) {
             Edit Metadata ({selectedRows.length})
           </Button>
         )}
+        {selectedRows.length > 0 && (
+          <Button icon={<EditOutlined />} onClick={() => setPrivOpen(true)}>
+            Edit Privileges ({selectedRows.length})
+          </Button>
+        )}
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>New Table</Button>
       </Space>
       <Input.Search placeholder="Search tables..." allowClear onChange={(e) => setSearch(e.target.value)} style={{ marginBottom: 12, maxWidth: 300 }} />
@@ -570,6 +577,13 @@ function TablesPanel({ schema }: { schema: string }) {
           />
         </div>
       </Drawer>
+      <BulkPrivilegeModal
+        open={privOpen}
+        schema={schema}
+        tables={selectedRows}
+        onClose={() => setPrivOpen(false)}
+        onApplied={() => setSelectedRows([])}
+      />
       <Drawer title="Create Table" open={createOpen} onClose={() => setCreateOpen(false)} width={400}
         extra={<Button type="primary" onClick={handleCreate} loading={saving}>Save</Button>}>
         <Form form={form} layout="vertical">
