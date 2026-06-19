@@ -4,6 +4,7 @@ import { Form, Input, InputNumber, Select, Button, Space, Spin } from 'antd';
 import { message } from '../../utils/message';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
+import type { PatchRpcMethodRequest } from '@centia-io/sdk';
 import { queryClient } from '../../data/queryClient';
 import CodeEditor from '../../components/CodeEditor';
 
@@ -65,7 +66,7 @@ export default function RpcFormPage() {
       if (isNew) {
         await admin.provisioning.rpcMethods.postRpc({ ...values, ...payload });
       } else {
-        await admin.provisioning.rpcMethods.patchRpc(method!, payload);
+        await admin.provisioning.rpcMethods.patchRpc(method!, payload as unknown as PatchRpcMethodRequest);
       }
       message.success(isNew ? 'Method created' : 'Method updated');
       queryClient.invalidateQueries({ queryKey: ['rpc-methods'] });

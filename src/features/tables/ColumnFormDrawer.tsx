@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Drawer, Form, Input, Select, Switch, Button } from 'antd';
 import { message } from '../../utils/message';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
+import type { CreateColumnRequest } from '@centia-io/sdk';
 
 const PG_TYPES = [
   'integer', 'bigint', 'smallint', 'serial', 'bigserial',
@@ -43,7 +44,7 @@ export default function ColumnFormDrawer({ open, schema, table, column, onClose,
       if (isEdit) {
         await admin.provisioning.columns.patchColumn(schema, table, column.name, values);
       } else {
-        await admin.provisioning.columns.postColumn(schema, table, values);
+        await admin.provisioning.columns.postColumn(schema, table, values as unknown as CreateColumnRequest);
       }
       const nameChanged = isEdit ? values.name !== column.name : true;
       message.success(isEdit ? 'Column updated' : 'Column created');

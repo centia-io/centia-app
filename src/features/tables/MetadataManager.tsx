@@ -4,6 +4,7 @@ import { message } from '../../utils/message';
 import { SaveOutlined } from '@ant-design/icons';
 import { getMeta } from '../../baas/client';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
+import type { MetadataRelationInfo } from '@centia-io/sdk';
 import SchemaForm from '../../components/SchemaForm';
 import { testPropertiesSchema } from '../../data/testPropertiesSchema';
 
@@ -45,7 +46,7 @@ export default function MetadataManager({ schema, table }: Props) {
         relations: {
           [qualifiedName]: {
             properties: Object.keys(properties).length ? properties : null,
-          },
+          } as unknown as MetadataRelationInfo,
         },
       }).catch((e: any) => {
         if (e?.status === 204) return;

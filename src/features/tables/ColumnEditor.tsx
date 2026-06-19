@@ -4,6 +4,7 @@ import { message } from '../../utils/message';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SaveOutlined, HolderOutlined } from '@ant-design/icons';
 import { useMetaQuery, invalidateMeta } from '../../hooks/useMetaQuery';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
+import type { MetadataRelationInfo } from '@centia-io/sdk';
 import { confirmDelete } from '../../components/ConfirmDelete';
 import ColumnFormDrawer from './ColumnFormDrawer';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
@@ -99,7 +100,7 @@ export default function ColumnEditor({ schema, table, columns, onRefresh }: Prop
                 sort_id: merged.sort_id,
               },
             },
-          },
+          } as unknown as MetadataRelationInfo,
         },
       }).catch((e: any) => {
         if (e?.status === 204) return;
@@ -290,7 +291,7 @@ export default function ColumnEditor({ schema, table, columns, onRefresh }: Prop
                   <Input
                     size="small"
                     placeholder="—"
-                    value={getFieldValue(record.name, 'alias') ?? ''}
+                    value={(getFieldValue(record.name, 'alias') as string | null) ?? ''}
                     onChange={(e) => updateDirty(record.name, 'alias', e.target.value || null)}
                   />
                 ),
@@ -309,7 +310,7 @@ export default function ColumnEditor({ schema, table, columns, onRefresh }: Prop
                   <InputNumber
                     size="small"
                     placeholder="—"
-                    value={getFieldValue(record.name, 'sort_id')}
+                    value={getFieldValue(record.name, 'sort_id') as number | null}
                     onChange={(v) => updateDirty(record.name, 'sort_id', v)}
                     style={{ width: '100%' }}
                   />
