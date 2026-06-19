@@ -86,6 +86,7 @@ export default function SequenceListPage() {
         )}
       </Space>
       {isLoading && schema ? <Spin /> : error ? <Alert type="error" message={String(error)} /> : (
+        <>
         <Input.Search placeholder="Search sequences..." allowClear onChange={(e) => setSearch(e.target.value)} style={{ marginBottom: 12, maxWidth: 300 }} />
         <Table
           dataSource={(sequences as any[]).filter((r) => !search || (r.name ?? '').toLowerCase().includes(search.toLowerCase()))}
@@ -108,6 +109,7 @@ export default function SequenceListPage() {
             },
           ]}
         />
+        </>
       )}
       <Drawer title="Create Sequence" open={createOpen} onClose={() => setCreateOpen(false)} width={400}
         extra={<Button type="primary" onClick={handleCreate} loading={saving}>Save</Button>}>
