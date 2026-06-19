@@ -12,7 +12,7 @@ export default function RpcFormPage() {
   const { method } = useParams<{ method: string }>();
   const navigate = useNavigate();
   const isNew = method === 'new';
-  const [form] = Form.useForm();
+  const [form] = Form.useForm<{ method: string; output_format?: string; srs?: number }>();
   const [sql, setSql] = useState('');
   const [typeHints, setTypeHints] = useState('{}');
   const [typeFormats, setTypeFormats] = useState('{}');
@@ -54,7 +54,7 @@ export default function RpcFormPage() {
       return;
     }
 
-    const payload: Record<string, unknown> = {
+    const payload: PatchRpcMethodRequest = {
       q: sql,
       output_format: values.output_format,
       srs: values.srs,
@@ -66,7 +66,7 @@ export default function RpcFormPage() {
       if (isNew) {
         await admin.provisioning.rpcMethods.postRpc({ ...values, ...payload });
       } else {
-        await admin.provisioning.rpcMethods.patchRpc(method!, payload as unknown as PatchRpcMethodRequest);
+        await admin.provisioning.rpcMethods.patchRpc(method!, payload);
       }
       message.success(isNew ? 'Method created' : 'Method updated');
       queryClient.invalidateQueries({ queryKey: ['rpc-methods'] });

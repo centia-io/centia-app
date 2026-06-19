@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Drawer, Form, Input, Select, Switch, Button } from 'antd';
 import { message } from '../../utils/message';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
-import type { CreateColumnRequest } from '@centia-io/sdk';
+import type { CreateColumnRequest, PatchColumnRequest } from '@centia-io/sdk';
 
 const PG_TYPES = [
   'integer', 'bigint', 'smallint', 'serial', 'bigserial',
@@ -24,7 +24,13 @@ interface Props {
 }
 
 export default function ColumnFormDrawer({ open, schema, table, column, onClose, onDone }: Props) {
-  const [form] = Form.useForm();
+  const [form] = Form.useForm<{
+    name: string;
+    type: string;
+    is_nullable?: boolean;
+    default_value?: string;
+    comment?: string;
+  }>();
   const isEdit = !!column;
 
   useEffect(() => {
@@ -35,18 +41,25 @@ export default function ColumnFormDrawer({ open, schema, table, column, onClose,
 
   const handleSubmit = async () => {
     const raw = await form.validateFields();
-    const values = Object.fromEntries(
-      Object.entries(raw).filter(([, v]) => v !== '' && v !== undefined),
-    );
     const admin = getAdminClient();
 
     try {
       if (isEdit) {
-        await admin.provisioning.columns.patchColumn(schema, table, column.name, values);
+        const patch: PatchColumnRequest = {};
+        if (raw.name) patch.name = raw.name;
+        if (raw.type) patch.type = raw.type;
+        if (raw.is_nullable !== undefined) patch.is_nullable = raw.is_nullable;
+        if (raw.default_value) patch.default_value = raw.default_value;
+        if (raw.comment) patch.comment = raw.comment;
+        await admin.provisioning.columns.patchColumn(schema, table, column.name, patch);
       } else {
-        await admin.provisioning.columns.postColumn(schema, table, values as unknown as CreateColumnRequest);
+        const body: CreateColumnRequest = { name: raw.name, type: raw.type };
+        if (raw.is_nullable !== undefined) body.is_nullable = raw.is_nullable;
+        if (raw.default_value) body.default_value = raw.default_value;
+        if (raw.comment) body.comment = raw.comment;
+        await admin.provisioning.columns.postColumn(schema, table, body);
       }
-      const nameChanged = isEdit ? values.name !== column.name : true;
+      const nameChanged = isEdit ? raw.name !== column.name : true;
       message.success(isEdit ? 'Column updated' : 'Column created');
       form.resetFields();
       onDone(nameChanged);
