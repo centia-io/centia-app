@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Modal, Select, Segmented, Spin, Space, Typography } from 'antd';
 import { message } from '../../utils/message';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
+import type { UserInfo } from '@centia-io/sdk';
 
 type Level = 'none' | 'read' | 'write';
 
@@ -26,7 +27,7 @@ export default function BulkPrivilegeModal({ open, schema, tables, onClose, onAp
     getAdminClient().provisioning.users.getUser()
       .then((res) => {
         const list = Array.isArray(res) ? res : [];
-        setUsers(list.map((u: any) => u.name).filter(Boolean));
+        setUsers(list.map((u: UserInfo) => u.name).filter(Boolean));
       })
       .catch((e) => message.error(getErrorMessage(e)))
       .finally(() => setLoadingUsers(false));

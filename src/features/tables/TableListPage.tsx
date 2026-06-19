@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Table, Button, Space, Drawer, Modal, Form, Input, InputNumber, Select, Checkbox, Spin, Alert, Tabs, Typography, Tag } from 'antd';
 import { message } from '../../utils/message';
-import { PlusOutlined, DeleteOutlined, ArrowLeftOutlined, SaveOutlined, CodeOutlined, EditOutlined, HolderOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, ArrowLeftOutlined, SaveOutlined, CodeOutlined, EditOutlined, HolderOutlined, LockOutlined } from '@ant-design/icons';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -415,7 +415,7 @@ function TablesPanel({ schema }: { schema: string }) {
           </Button>
         )}
         {selectedRows.length > 0 && (
-          <Button icon={<EditOutlined />} onClick={() => setPrivOpen(true)}>
+          <Button icon={<LockOutlined />} onClick={() => setPrivOpen(true)}>
             Edit Privileges ({selectedRows.length})
           </Button>
         )}
