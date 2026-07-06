@@ -7,6 +7,7 @@ import {
   CodeOutlined,
   ApiOutlined,
   FunctionOutlined,
+  CodeSandboxOutlined,
   UserOutlined,
   KeyOutlined,
   SafetyOutlined,
@@ -32,6 +33,7 @@ const items = [
   ]},
   { type: 'group' as const, label: 'API', children: [
     { key: '/rpc', icon: <FunctionOutlined />, label: 'JSON-RPC Methods' },
+    { key: '/functions', icon: <CodeSandboxOutlined />, label: 'Functions' },
   ]},
   { type: 'group' as const, label: 'Access', children: [
     { key: '/users', icon: <UserOutlined />, label: 'Users' },
