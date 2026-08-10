@@ -282,6 +282,11 @@ export default function MapPage() {
       next.delete(wid);
       return next;
     });
+    setLayerLoading((prev) => {
+      const next = new Set(prev);
+      next.delete(sourceId(gt));
+      return next;
+    });
   }, []);
 
   // Initialize map (once per mount) — restore camera + rehydrate active layers from store
