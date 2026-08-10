@@ -18,6 +18,7 @@ import {
   type RenderMode,
 } from './mapStore';
 import { computeWmsViewport, fetchWmsImage, wmsLayerName } from './wmsImage';
+import LayerStyleDrawer from './LayerStyleDrawer';
 
 const { Text } = Typography;
 
@@ -518,6 +519,8 @@ export default function MapPage() {
 
       {/* Map area */}
       <div ref={mapContainer} style={{ flex: 1, minHeight: 0 }} />
+
+      <LayerStyleDrawer />
     </div>
   );
 }
