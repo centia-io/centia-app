@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Collapse, Drawer, Space, Spin } from 'antd';
 import type { Layer } from '@centia-io/sdk';
 import { message } from '../../utils/message';
@@ -16,21 +16,28 @@ export default function LayerStyleDrawer() {
   const saveLayer = useSaveLayer();
   const [draft, setDraft] = useState<Layer | null>(null);
   const [dirty, setDirty] = useState(false);
+  // Mirrors `dirty` synchronously so the resync effect below never clobbers edits.
+  const dirtyRef = useRef(false);
+  const markDirty = (v: boolean) => {
+    dirtyRef.current = v;
+    setDirty(v);
+  };
 
   // Reset when the drawer targets a different layer (or closes).
   useEffect(() => {
     setDraft(null);
-    setDirty(false);
+    markDirty(false);
   }, [key]);
 
-  // Initialize the draft from the first data arrival; later refetches never clobber edits.
+  // Sync the draft from (re)fetched data whenever there are no unsaved edits, so
+  // server-assigned ids reach the draft after the post-save refetch.
   useEffect(() => {
-    setDraft((d) => (d === null && data ? structuredClone(data) : d));
+    if (data && !dirtyRef.current) setDraft(structuredClone(data));
   }, [data]);
 
   const update = (patch: Partial<Layer>) => {
     setDraft((d) => (d ? { ...d, ...patch } : d));
-    setDirty(true);
+    markDirty(true);
   };
 
   const close = () => {
@@ -50,7 +57,7 @@ export default function LayerStyleDrawer() {
     if (!draft) return;
     try {
       await saveLayer.mutateAsync(draft);
-      setDirty(false);
+      markDirty(false);
       message.success('Layer styling saved');
       bumpWmsRefresh();
     } catch (e) {
