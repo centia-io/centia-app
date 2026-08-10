@@ -230,6 +230,10 @@ export default function MapPage() {
         viewport,
         signal: ctrl.signal,
       });
+      if (wmsAborts.current.get(wid) !== ctrl) {
+        URL.revokeObjectURL(url);
+        return;
+      }
       const old = wmsUrls.current.get(wid);
       const src = map.getSource(wid) as maplibregl.ImageSource | undefined;
       if (src) {
@@ -250,11 +254,13 @@ export default function MapPage() {
         setWmsErrors((prev) => new Map(prev).set(wid, e instanceof Error ? e.message : String(e)));
       }
     } finally {
-      setLayerLoading((prev) => {
-        const next = new Set(prev);
-        next.delete(sourceId(gt));
-        return next;
-      });
+      if (wmsAborts.current.get(wid) === ctrl) {
+        setLayerLoading((prev) => {
+          const next = new Set(prev);
+          next.delete(sourceId(gt));
+          return next;
+        });
+      }
     }
   }, []);
 
