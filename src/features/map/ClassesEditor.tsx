@@ -8,8 +8,25 @@ import { CSS } from '@dnd-kit/utilities';
 import type { Label, LayerClass, Style } from '@centia-io/sdk';
 import { CLASS_FIELDS, LABEL_FIELDS, STYLE_FIELDS, FieldGrid, type FieldDef } from './fieldDefs';
 
-function classKey(c: LayerClass, i: number): string {
-  return c.id ?? `new-${i}`;
+let nextTmpKey = 1;
+const tmpKeys = new WeakMap<object, string>();
+
+/** Stable list key: server id when present, else a client key minted per draft object. */
+function keyOf(entity: { id?: string }): string {
+  if (entity.id) return entity.id;
+  let k = tmpKeys.get(entity);
+  if (!k) {
+    k = `new-${nextTmpKey++}`;
+    tmpKeys.set(entity, k);
+  }
+  return k;
+}
+
+/** Carry the source object's client key over to its immutable replacement. */
+function withKeyOf<T extends object>(source: object, next: T): T {
+  const k = tmpKeys.get(source);
+  if (k) tmpKeys.set(next, k);
+  return next;
 }
 
 /** Generic add/edit/delete list for styles or labels of one class. */
@@ -25,14 +42,14 @@ function EntityList<T extends { id?: string; name?: string; sortid?: number }>({
   onChange: (items: T[]) => void;
 }) {
   const update = (i: number, patch: Record<string, unknown>) => {
-    onChange(items.map((it, j) => (j === i ? { ...it, ...patch } : it)));
+    onChange(items.map((it, j) => (j === i ? withKeyOf(it, { ...it, ...patch }) : it)));
   };
   return (
     <Space direction="vertical" style={{ width: '100%' }}>
       <Collapse
         size="small"
         items={items.map((it, i) => ({
-          key: it.id ?? `new-${i}`,
+          key: keyOf(it),
           label: it.name || `${itemLabel} ${i + 1}`,
           extra: (
             <Popconfirm
@@ -166,15 +183,15 @@ export default function ClassesEditor({
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const updateClass = (i: number, patch: Partial<LayerClass>) => {
-    onChange(classes.map((c, j) => (j === i ? { ...c, ...patch } : c)));
+    onChange(classes.map((c, j) => (j === i ? withKeyOf(c, { ...c, ...patch }) : c)));
   };
 
   const handleDragEnd = (e: DragEndEvent) => {
     const { active, over } = e;
     if (!over || active.id === over.id) return;
-    const ids = classes.map(classKey);
+    const ids = classes.map(keyOf);
     const moved = arrayMove(classes, ids.indexOf(String(active.id)), ids.indexOf(String(over.id)));
-    onChange(moved.map((c, i) => ({ ...c, sortid: (i + 1) * 10 })));
+    onChange(moved.map((c, i) => withKeyOf(c, { ...c, sortid: (i + 1) * 10 })));
   };
 
   const addClass = () => {
@@ -202,10 +219,10 @@ export default function ClassesEditor({
     <Space direction="vertical" style={{ width: '100%' }}>
       <Typography.Text strong>Classes</Typography.Text>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={classes.map(classKey)} strategy={verticalListSortingStrategy}>
+        <SortableContext items={classes.map(keyOf)} strategy={verticalListSortingStrategy}>
           <Space direction="vertical" style={{ width: '100%' }} size={4}>
             {classes.map((c, i) => {
-              const key = classKey(c, i);
+              const key = keyOf(c);
               return (
                 <SortableClassItem
                   key={key}
