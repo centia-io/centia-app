@@ -1,11 +1,23 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Spin, Alert, Switch, Typography, Select } from 'antd';
+import { Spin, Alert, Switch, Typography, Select, Segmented, Button, Tooltip } from 'antd';
+import { BgColorsOutlined, WarningOutlined } from '@ant-design/icons';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { getAdminClient } from '../../baas/adminClient';
-import { getSql } from '../../baas/client';
+import { getSql, getStatus } from '../../baas/client';
 import { useQuery } from '@tanstack/react-query';
-import { mapStore, useMapStore, addActiveLayer, removeActiveLayer, type GeoTable } from './mapStore';
+import {
+  mapStore,
+  useMapStore,
+  addActiveLayer,
+  removeActiveLayer,
+  setRenderMode,
+  openStyleEditor,
+  type GeoTable,
+  type ActiveLayer,
+  type RenderMode,
+} from './mapStore';
+import { computeWmsViewport, fetchWmsImage, wmsLayerName } from './wmsImage';
 
 const { Text } = Typography;
 
@@ -74,6 +86,10 @@ function layerId(gt: GeoTable) {
   return `layer-${gt.schema}.${gt.table}`;
 }
 
+function wmsSourceId(gt: GeoTable) {
+  return `wms-${gt.schema}.${gt.table}`;
+}
+
 export default function MapPage() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -82,8 +98,12 @@ export default function MapPage() {
   const popupRef = useRef<maplibregl.Popup | null>(null);
   /** Track all interactive layer ids so the click handler can query them. */
   const interactiveLayerIds = useRef<Set<string>>(new Set());
+  /** Per-WMS-source abort controllers and object URLs. */
+  const wmsAborts = useRef<Map<string, AbortController>>(new Map());
+  const wmsUrls = useRef<Map<string, string>>(new Map());
+  const [wmsErrors, setWmsErrors] = useState<Map<string, string>>(new Map());
 
-  const { selectedSchema, activeLayers } = useMapStore();
+  const { selectedSchema, activeLayers, wmsRefresh } = useMapStore();
 
   const { data: geoTables = [], isLoading: loading, error } = useQuery({
     queryKey: ['schemas'],
@@ -189,6 +209,75 @@ export default function MapPage() {
     interactiveLayerIds.current.delete(lid);
   }, []);
 
+  /** Fetch a viewport-sized GetMap image and add or update the image source for the layer. */
+  const showWms = useCallback(async (gt: GeoTable) => {
+    const map = mapRef.current;
+    if (!map) return;
+    const wid = wmsSourceId(gt);
+
+    wmsAborts.current.get(wid)?.abort();
+    const ctrl = new AbortController();
+    wmsAborts.current.set(wid, ctrl);
+
+    setLayerLoading((prev) => new Set(prev).add(sourceId(gt)));
+    try {
+      const viewport = computeWmsViewport(map);
+      const url = await fetchWmsImage({
+        host: import.meta.env.VITE_CENTIA_HOST,
+        schema: gt.schema,
+        wmsLayer: wmsLayerName(gt),
+        token: getStatus().getTokens().accessToken,
+        viewport,
+        signal: ctrl.signal,
+      });
+      const old = wmsUrls.current.get(wid);
+      const src = map.getSource(wid) as maplibregl.ImageSource | undefined;
+      if (src) {
+        src.updateImage({ url, coordinates: viewport.coordinates });
+      } else {
+        map.addSource(wid, { type: 'image', url, coordinates: viewport.coordinates });
+        map.addLayer({ id: wid, type: 'raster', source: wid, paint: { 'raster-fade-duration': 0 } });
+      }
+      wmsUrls.current.set(wid, url);
+      if (old) URL.revokeObjectURL(old);
+      setWmsErrors((prev) => {
+        const next = new Map(prev);
+        next.delete(wid);
+        return next;
+      });
+    } catch (e) {
+      if (!(e instanceof DOMException && e.name === 'AbortError')) {
+        setWmsErrors((prev) => new Map(prev).set(wid, e instanceof Error ? e.message : String(e)));
+      }
+    } finally {
+      setLayerLoading((prev) => {
+        const next = new Set(prev);
+        next.delete(sourceId(gt));
+        return next;
+      });
+    }
+  }, []);
+
+  const removeWms = useCallback((gt: GeoTable) => {
+    const map = mapRef.current;
+    if (!map) return;
+    const wid = wmsSourceId(gt);
+    wmsAborts.current.get(wid)?.abort();
+    wmsAborts.current.delete(wid);
+    if (map.getLayer(wid)) map.removeLayer(wid);
+    if (map.getSource(wid)) map.removeSource(wid);
+    const url = wmsUrls.current.get(wid);
+    if (url) {
+      URL.revokeObjectURL(url);
+      wmsUrls.current.delete(wid);
+    }
+    setWmsErrors((prev) => {
+      const next = new Map(prev);
+      next.delete(wid);
+      return next;
+    });
+  }, []);
+
   // Initialize map (once per mount) — restore camera + rehydrate active layers from store
   useEffect(() => {
     if (!mapContainer.current) return;
@@ -246,21 +335,41 @@ export default function MapPage() {
       });
     });
 
+    const refreshAllWms = () => {
+      for (const al of mapStore.get().activeLayers) {
+        if (al.renderMode === 'wms') showWms(al);
+      }
+    };
+    map.on('moveend', refreshAllWms);
+    map.on('resize', refreshAllWms);
+
     map.on('load', () => {
       mapRef.current = map;
       setMapReady(true);
       // Rehydrate layers from store without overriding saved camera
-      for (const gt of mapStore.get().activeLayers) {
-        addLayer(gt, { fit: false });
+      for (const al of mapStore.get().activeLayers) {
+        if (al.renderMode === 'wms') showWms(al);
+        else addLayer(al, { fit: false });
       }
     });
 
     return () => {
       mapRef.current = null;
       setMapReady(false);
+      for (const ctrl of wmsAborts.current.values()) ctrl.abort();
+      wmsAborts.current.clear();
+      for (const url of wmsUrls.current.values()) URL.revokeObjectURL(url);
+      wmsUrls.current.clear();
       map.remove();
     };
-  }, [addLayer]);
+  }, [addLayer, showWms]);
+
+  useEffect(() => {
+    if (!mapReady || wmsRefresh === 0) return;
+    for (const al of mapStore.get().activeLayers) {
+      if (al.renderMode === 'wms') showWms(al);
+    }
+  }, [wmsRefresh, mapReady, showWms]);
 
   const handleToggle = useCallback(
     (gt: GeoTable, checked: boolean) => {
@@ -268,11 +377,30 @@ export default function MapPage() {
         addActiveLayer(gt);
         addLayer(gt, { fit: true });
       } else {
+        const al = mapStore
+          .get()
+          .activeLayers.find((x) => x.schema === gt.schema && x.table === gt.table);
         removeActiveLayer(gt);
-        removeLayer(gt);
+        if (al?.renderMode === 'wms') removeWms(gt);
+        else removeLayer(gt);
       }
     },
-    [addLayer, removeLayer],
+    [addLayer, removeLayer, removeWms],
+  );
+
+  const handleModeChange = useCallback(
+    (al: ActiveLayer, mode: RenderMode) => {
+      if (al.renderMode === mode) return;
+      setRenderMode(al, mode);
+      if (mode === 'wms') {
+        removeLayer(al);
+        showWms(al);
+      } else {
+        removeWms(al);
+        addLayer(al, { fit: false });
+      }
+    },
+    [addLayer, removeLayer, showWms, removeWms],
   );
 
   const schemas = [...new Set(geoTables.map((gt) => gt.schema))];
@@ -328,25 +456,47 @@ export default function MapPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '0 16px' }}>
               {visibleTables.map((gt) => {
                 const sid = sourceId(gt);
+                const al = activeLayers.find((x) => x.schema === gt.schema && x.table === gt.table);
+                const err = wmsErrors.get(wmsSourceId(gt));
                 return (
-                  <div
-                    key={sid}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                    }}
-                  >
-                    <Text ellipsis style={{ flex: 1, marginRight: 8 }}>
-                      {gt.table}
-                    </Text>
-                    <Switch
-                      size="small"
-                      checked={isActive(gt)}
-                      loading={layerLoading.has(sid)}
-                      disabled={!mapReady}
-                      onChange={(checked) => handleToggle(gt, checked)}
-                    />
+                  <div key={sid} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Text ellipsis style={{ flex: 1, marginRight: 8 }}>
+                        {gt.table}
+                      </Text>
+                      {err && (
+                        <Tooltip title={err}>
+                          <WarningOutlined style={{ color: '#faad14', marginRight: 4 }} />
+                        </Tooltip>
+                      )}
+                      <Tooltip title="Edit WMS styling">
+                        <Button
+                          size="small"
+                          type="text"
+                          icon={<BgColorsOutlined />}
+                          onClick={() => openStyleEditor(gt)}
+                        />
+                      </Tooltip>
+                      <Switch
+                        size="small"
+                        checked={isActive(gt)}
+                        loading={layerLoading.has(sid)}
+                        disabled={!mapReady}
+                        onChange={(checked) => handleToggle(gt, checked)}
+                      />
+                    </div>
+                    {al && (
+                      <Segmented
+                        size="small"
+                        block
+                        value={al.renderMode}
+                        options={[
+                          { label: 'GeoJSON', value: 'geojson' },
+                          { label: 'WMS', value: 'wms' },
+                        ]}
+                        onChange={(v) => handleModeChange(al, v as RenderMode)}
+                      />
+                    )}
                   </div>
                 );
               })}
