@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Collapse, Drawer, Modal, Space, Spin } from 'antd';
+import { Alert, Button, Collapse, Drawer, Space, Spin } from 'antd';
 import type { Layer } from '@centia-io/sdk';
 import { message } from '../../utils/message';
+import { modal } from '../../utils/modal';
 import { getErrorMessage } from '../../baas/adminClient';
 import { bumpWmsRefresh, closeStyleEditor, useMapStore } from './mapStore';
 import { layerKeyOf, useLayer, useSaveLayer } from './layerQueries';
@@ -16,10 +17,16 @@ export default function LayerStyleDrawer() {
   const [draft, setDraft] = useState<Layer | null>(null);
   const [dirty, setDirty] = useState(false);
 
+  // Reset when the drawer targets a different layer (or closes).
   useEffect(() => {
-    setDraft(data ? structuredClone(data) : null);
+    setDraft(null);
     setDirty(false);
-  }, [data, key]);
+  }, [key]);
+
+  // Initialize the draft from the first data arrival; later refetches never clobber edits.
+  useEffect(() => {
+    setDraft((d) => (d === null && data ? structuredClone(data) : d));
+  }, [data]);
 
   const update = (patch: Partial<Layer>) => {
     setDraft((d) => (d ? { ...d, ...patch } : d));
@@ -28,7 +35,7 @@ export default function LayerStyleDrawer() {
 
   const close = () => {
     if (dirty) {
-      Modal.confirm({
+      modal.confirm({
         title: 'Discard changes?',
         content: 'Unsaved styling changes will be lost.',
         okText: 'Discard',
