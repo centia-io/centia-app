@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Button, Collapse, Popconfirm, Space, Tabs, theme, Typography } from 'antd';
+import type { ReactNode } from 'react';
+import { Button, Popconfirm, Space, Tabs, theme, Typography } from 'antd';
 import { CopyOutlined, DeleteOutlined, DownOutlined, HolderOutlined, PlusOutlined, RightOutlined } from '@ant-design/icons';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
@@ -29,7 +30,52 @@ function withKeyOf<T extends object>(source: object, next: T): T {
   return next;
 }
 
-/** Generic add/edit/delete list for styles or labels of one class. */
+/** Draggable bordered card with a grab handle, expand toggle, title and header actions. */
+function SortableCard({
+  id,
+  title,
+  expanded,
+  onToggle,
+  actions,
+  children,
+}: {
+  id: string;
+  title: string;
+  expanded: boolean;
+  onToggle: () => void;
+  actions: ReactNode;
+  children: ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const { token } = theme.useToken();
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.6 : 1,
+        border: `1px solid ${token.colorBorderSecondary}`,
+        borderRadius: 6,
+        background: token.colorBgContainer,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px' }}>
+        <span {...attributes} {...listeners} style={{ cursor: 'grab', display: 'inline-flex' }}>
+          <HolderOutlined />
+        </span>
+        <Button size="small" type="text" icon={expanded ? <DownOutlined /> : <RightOutlined />} onClick={onToggle} />
+        <Typography.Text ellipsis style={{ flex: 1 }} onClick={onToggle}>
+          {title}
+        </Typography.Text>
+        {actions}
+      </div>
+      {expanded && <div style={{ padding: '4px 8px 8px' }}>{children}</div>}
+    </div>
+  );
+}
+
+/** Generic add/edit/delete/reorder list for styles or labels of one class. */
 function EntityList<T extends { id?: string; name?: string; sortid?: number }>({
   items,
   fields,
@@ -41,38 +87,55 @@ function EntityList<T extends { id?: string; name?: string; sortid?: number }>({
   itemLabel: string;
   onChange: (items: T[]) => void;
 }) {
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+  const [expanded, setExpanded] = useState<string | null>(null);
+
   const update = (i: number, patch: Record<string, unknown>) => {
     onChange(items.map((it, j) => (j === i ? withKeyOf(it, { ...it, ...patch }) : it)));
   };
+
+  const handleDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const ids = items.map(keyOf);
+    const moved = arrayMove(items, ids.indexOf(String(active.id)), ids.indexOf(String(over.id)));
+    onChange(moved.map((it, i) => withKeyOf(it, { ...it, sortid: (i + 1) * 10 })));
+  };
+
   return (
     <Space direction="vertical" style={{ width: '100%' }}>
-      <Collapse
-        size="small"
-        items={items.map((it, i) => ({
-          key: keyOf(it),
-          label: it.name || `${itemLabel} ${i + 1}`,
-          extra: (
-            <Popconfirm
-              title={`Delete this ${itemLabel.toLowerCase()}?`}
-              onConfirm={() => onChange(items.filter((_, j) => j !== i))}
-            >
-              <Button
-                size="small"
-                type="text"
-                icon={<DeleteOutlined />}
-                onClick={(e) => e.stopPropagation()}
-              />
-            </Popconfirm>
-          ),
-          children: (
-            <FieldGrid
-              fields={fields}
-              entity={it as Record<string, unknown>}
-              onChange={(p) => update(i, p)}
-            />
-          ),
-        }))}
-      />
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={items.map(keyOf)} strategy={verticalListSortingStrategy}>
+          <Space direction="vertical" style={{ width: '100%' }} size={4}>
+            {items.map((it, i) => {
+              const key = keyOf(it);
+              return (
+                <SortableCard
+                  key={key}
+                  id={key}
+                  title={it.name || `${itemLabel} ${i + 1}`}
+                  expanded={expanded === key}
+                  onToggle={() => setExpanded(expanded === key ? null : key)}
+                  actions={
+                    <Popconfirm
+                      title={`Delete this ${itemLabel.toLowerCase()}?`}
+                      onConfirm={() => onChange(items.filter((_, j) => j !== i))}
+                    >
+                      <Button size="small" type="text" icon={<DeleteOutlined />} />
+                    </Popconfirm>
+                  }
+                >
+                  <FieldGrid
+                    fields={fields}
+                    entity={it as Record<string, unknown>}
+                    onChange={(p) => update(i, p)}
+                  />
+                </SortableCard>
+              );
+            })}
+          </Space>
+        </SortableContext>
+      </DndContext>
       <Button
         size="small"
         icon={<PlusOutlined />}
@@ -103,73 +166,57 @@ function SortableClassItem({
   onDelete: () => void;
   onDuplicate: () => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
-  const { token } = theme.useToken();
   return (
-    <div
-      ref={setNodeRef}
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.6 : 1,
-        border: `1px solid ${token.colorBorderSecondary}`,
-        borderRadius: 6,
-        background: token.colorBgContainer,
-      }}
+    <SortableCard
+      id={id}
+      title={cls.name || `Class ${index + 1}`}
+      expanded={expanded}
+      onToggle={onToggle}
+      actions={
+        <>
+          <Button size="small" type="text" icon={<CopyOutlined />} onClick={onDuplicate} />
+          <Popconfirm title="Delete this class?" onConfirm={onDelete}>
+            <Button size="small" type="text" icon={<DeleteOutlined />} />
+          </Popconfirm>
+        </>
+      }
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px' }}>
-        <span {...attributes} {...listeners} style={{ cursor: 'grab', display: 'inline-flex' }}>
-          <HolderOutlined />
-        </span>
-        <Button size="small" type="text" icon={expanded ? <DownOutlined /> : <RightOutlined />} onClick={onToggle} />
-        <Typography.Text ellipsis style={{ flex: 1 }} onClick={onToggle}>
-          {cls.name || `Class ${index + 1}`}
-        </Typography.Text>
-        <Button size="small" type="text" icon={<CopyOutlined />} onClick={onDuplicate} />
-        <Popconfirm title="Delete this class?" onConfirm={onDelete}>
-          <Button size="small" type="text" icon={<DeleteOutlined />} />
-        </Popconfirm>
-      </div>
-      {expanded && (
-        <div style={{ padding: '4px 8px 8px' }}>
-          <FieldGrid
-            fields={CLASS_FIELDS}
-            entity={cls as Record<string, unknown>}
-            onChange={onUpdate}
-          />
-          <Tabs
-            size="small"
-            style={{ marginTop: 8 }}
-            items={[
-              {
-                key: 'styles',
-                label: `Styles (${cls.styles?.length ?? 0})`,
-                children: (
-                  <EntityList<Style>
-                    items={cls.styles ?? []}
-                    fields={STYLE_FIELDS}
-                    itemLabel="Style"
-                    onChange={(styles) => onUpdate({ styles })}
-                  />
-                ),
-              },
-              {
-                key: 'labels',
-                label: `Labels (${cls.labels?.length ?? 0})`,
-                children: (
-                  <EntityList<Label>
-                    items={cls.labels ?? []}
-                    fields={LABEL_FIELDS}
-                    itemLabel="Label"
-                    onChange={(labels) => onUpdate({ labels })}
-                  />
-                ),
-              },
-            ]}
-          />
-        </div>
-      )}
-    </div>
+      <FieldGrid
+        fields={CLASS_FIELDS}
+        entity={cls as Record<string, unknown>}
+        onChange={onUpdate}
+      />
+      <Tabs
+        size="small"
+        style={{ marginTop: 8 }}
+        items={[
+          {
+            key: 'styles',
+            label: `Styles (${cls.styles?.length ?? 0})`,
+            children: (
+              <EntityList<Style>
+                items={cls.styles ?? []}
+                fields={STYLE_FIELDS}
+                itemLabel="Style"
+                onChange={(styles) => onUpdate({ styles })}
+              />
+            ),
+          },
+          {
+            key: 'labels',
+            label: `Labels (${cls.labels?.length ?? 0})`,
+            children: (
+              <EntityList<Label>
+                items={cls.labels ?? []}
+                fields={LABEL_FIELDS}
+                itemLabel="Label"
+                onChange={(labels) => onUpdate({ labels })}
+              />
+            ),
+          },
+        ]}
+      />
+    </SortableCard>
   );
 }
 
