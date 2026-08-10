@@ -132,6 +132,12 @@ export default function MapPage() {
         output_format: 'geojson',
       } as any) as unknown as GeoJSON.FeatureCollection;
 
+      // Bail if the layer was toggled off or switched away from GeoJSON while the fetch was in flight.
+      const current = mapStore
+        .get()
+        .activeLayers.find((x) => x.schema === gt.schema && x.table === gt.table);
+      if (!current || current.renderMode !== 'geojson') return;
+
       if (!geojson.features?.length) return;
 
       map.addSource(sid, { type: 'geojson', data: geojson });

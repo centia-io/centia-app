@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Collapse, Popconfirm, Space, Tabs, Typography } from 'antd';
+import { Button, Collapse, Popconfirm, Space, Tabs, theme, Typography } from 'antd';
 import { CopyOutlined, DeleteOutlined, DownOutlined, HolderOutlined, PlusOutlined, RightOutlined } from '@ant-design/icons';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
@@ -104,6 +104,7 @@ function SortableClassItem({
   onDuplicate: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const { token } = theme.useToken();
   return (
     <div
       ref={setNodeRef}
@@ -111,9 +112,9 @@ function SortableClassItem({
         transform: CSS.Transform.toString(transform),
         transition,
         opacity: isDragging ? 0.6 : 1,
-        border: '1px solid #f0f0f0',
+        border: `1px solid ${token.colorBorderSecondary}`,
         borderRadius: 6,
-        background: '#fff',
+        background: token.colorBgContainer,
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px' }}>
