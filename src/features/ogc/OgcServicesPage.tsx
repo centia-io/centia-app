@@ -89,7 +89,11 @@ export default function OgcServicesPage() {
       </Space>
 
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
-        <Card title="OWS (WMS)" size="small">
+        <Card
+          title="OWS (WMS/WFS)"
+          extra={<Text type="secondary">Read-only</Text>}
+          size="small"
+        >
           <Space direction="vertical" style={{ width: '100%' }}>
             <UrlField
               label="Anonymous / HTTP Basic (QGIS and other desktop GIS)"
@@ -102,17 +106,22 @@ export default function OgcServicesPage() {
               showIcon
               message={
                 <>
-                  In QGIS, add the anonymous URL as a <Text strong>WMS/WMTS</Text> connection.
-                  Anonymously readable layers need no credentials; protected layers are challenged
-                  with HTTP Basic auth using the database&apos;s viewer password. The token variant
-                  requires an <Text code>Authorization: Bearer</Text> header.
+                  Read-only endpoint serving WMS rendering and WFS reads. In QGIS, add the
+                  anonymous URL as a <Text strong>WMS/WMTS</Text> connection. Anonymously readable
+                  layers need no credentials; protected layers are challenged with HTTP Basic auth
+                  using the database&apos;s viewer password. The token variant requires an{' '}
+                  <Text code>Authorization: Bearer</Text> header.
                 </>
               }
             />
           </Space>
         </Card>
 
-        <Card title="WFS" size="small">
+        <Card
+          title="WFS-t"
+          extra={<Text type="secondary">Supports transactions</Text>}
+          size="small"
+        >
           <Space direction="vertical" style={{ width: '100%' }}>
             <UrlField
               label="Anonymous / HTTP Basic (QGIS and other desktop GIS)"
@@ -125,10 +134,11 @@ export default function OgcServicesPage() {
               showIcon
               message={
                 <>
-                  In QGIS, add the anonymous URL as a <Text strong>WFS / OGC API Features</Text>{' '}
-                  connection. Pick an SRS above to pin coordinates to a specific EPSG code —
-                  without it the service default is used. WFS-T transactions on writable layers
-                  require HTTP Basic auth (viewer password) or the token variant.
+                  WFS endpoint with transaction support (WFS-T): writable layers accept inserts,
+                  updates and deletes. In QGIS, add the anonymous URL as a{' '}
+                  <Text strong>WFS / OGC API Features</Text> connection. Pick an SRS above to pin
+                  coordinates to a specific EPSG code — without it the service default is used.
+                  Transactions require HTTP Basic auth (viewer password) or the token variant.
                 </>
               }
             />
