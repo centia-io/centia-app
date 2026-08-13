@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Table, Button, Space, Drawer, Form, Input, Select, Spin, Alert, Tag } from 'antd';
+import { Table, Button, Space, Drawer, Form, Input, Select, Spin, Alert, Switch, Tag } from 'antd';
 import { message } from '../../utils/message';
 import { PlusOutlined, DeleteOutlined, EditOutlined, SearchOutlined } from '@ant-design/icons';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
@@ -49,9 +49,28 @@ export default function UserListPage() {
   const handleSave = async () => {
     const values = await form.validateFields();
     const isEdit = !!editUser;
-    const payload = { ...values, user_group: values.user_group?.length ? values.user_group : null };
+    // default_user must always be sent explicitly: the API resets an omitted flag to false.
+    const payload = {
+      ...values,
+      user_group: values.user_group?.length ? values.user_group : null,
+      default_user: !!values.default_user,
+    };
     setSaving(true);
     try {
+      // A partial unique index allows only one default user, so demote the current one first.
+      if (payload.default_user) {
+        const previous = (users as any[]).find(
+          (u) => u.default_user && u.name !== (isEdit ? editUser.name : values.name),
+        );
+        if (previous) {
+          await getAdminClient().provisioning.users.patchUser(previous.name, {
+            email: previous.email,
+            password: null,
+            default_user: false,
+            user_group: toGroups(previous.user_group).length ? toGroups(previous.user_group) : null,
+          });
+        }
+      }
       if (isEdit) {
         await getAdminClient().provisioning.users.patchUser(editUser.name, payload);
       } else {
@@ -105,12 +124,15 @@ export default function UserListPage() {
         columns={[
           { title: 'Name', dataIndex: 'name', key: 'name',
             sorter: (a: any, b: any) => (a.name ?? '').localeCompare(b.name ?? ''),
+            render: (v: string, record: any) => (
+              <Space size={6}>
+                {v}
+                {record.default_user && <Tag color="blue" style={{ margin: 0 }}>default</Tag>}
+              </Space>
+            ),
           },
           { title: 'Email', dataIndex: 'email', key: 'email',
             sorter: (a: any, b: any) => (a.email ?? '').localeCompare(b.email ?? ''),
-          },
-          { title: 'Default', dataIndex: 'default_user', key: 'default',
-            render: (v: boolean) => v ? 'Yes' : 'No',
           },
           { title: 'Groups', dataIndex: 'user_group', key: 'groups',
             render: (v: unknown) => toGroups(v).map((g) => <Tag key={g}>{g}</Tag>),
@@ -144,6 +166,10 @@ export default function UserListPage() {
           </Form.Item>
           <Form.Item name="user_group" label="Groups" tooltip="Group memberships. Any other user can act as a group.">
             <Select mode="multiple" allowClear showSearch placeholder="No groups" options={groupOptions} />
+          </Form.Item>
+          <Form.Item name="default_user" label="Default user" valuePropName="checked"
+            tooltip="Only one user can be the default; setting it here removes the flag from the current default user.">
+            <Switch />
           </Form.Item>
         </Form>
       </Drawer>
