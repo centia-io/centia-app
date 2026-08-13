@@ -16,6 +16,7 @@ import {
   BranchesOutlined,
   EnvironmentOutlined,
   ThunderboltOutlined,
+  GlobalOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -30,6 +31,7 @@ const items = [
     { key: '/sql', icon: <CodeOutlined />, label: 'SQL Console' },
     { key: '/graphql', icon: <ApiOutlined />, label: 'GraphQL Explorer' },
     { key: '/realtime', icon: <ThunderboltOutlined />, label: 'Realtime' },
+    { key: '/ogc', icon: <GlobalOutlined />, label: 'OGC Services' },
   ]},
   { type: 'group' as const, label: 'API', children: [
     { key: '/rpc', icon: <FunctionOutlined />, label: 'JSON-RPC Methods' },

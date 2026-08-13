@@ -22,6 +22,7 @@ const MetadataEditorPage = lazy(() => import('./features/metadata/MetadataEditor
 const FileImportPage = lazy(() => import('./features/import/FileImportPage'));
 const GitCommitPage = lazy(() => import('./features/git/GitCommitPage'));
 const MapPage = lazy(() => import('./features/map/MapPage'));
+const OgcServicesPage = lazy(() => import('./features/ogc/OgcServicesPage'));
 
 const ProtectedRoute = lazy(() => import('./auth/ProtectedRoute'));
 
@@ -52,6 +53,7 @@ export const routes: RouteObject[] = [
       { path: 'functions/:name', element: <FunctionFormPage /> },
       { path: 'graphql', element: <GraphqlExplorerPage /> },
       { path: 'realtime', element: <RealtimePage /> },
+      { path: 'ogc', element: <OgcServicesPage /> },
       { path: 'users', element: <UserListPage /> },
       { path: 'clients', element: <ClientListPage /> },
       { path: 'rules', element: <RuleListPage /> },
