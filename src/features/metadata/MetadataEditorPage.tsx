@@ -6,6 +6,32 @@ import { getMeta } from '../../baas/client';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
 import CodeEditor from '../../components/CodeEditor';
 
+/** Keys the PATCH /meta validation accepts (everything else in the query output is read-only). */
+const PATCHABLE_RELATION_KEYS = ['title', 'abstract', 'group', 'sort_id', 'tags', 'properties'] as const;
+const PATCHABLE_FIELD_KEYS = ['alias', 'queryable', 'sort_id', 'properties'] as const;
+
+function pick(obj: Record<string, any>, keys: readonly string[]): Record<string, any> {
+  return Object.fromEntries(Object.entries(obj ?? {}).filter(([k]) => keys.includes(k)));
+}
+
+/** Reduce query output to the shape PATCH /meta accepts — per relation and per fields entry. */
+function stripReadOnly(relations: Record<string, any>): Record<string, any> {
+  const out: Record<string, any> = {};
+  for (const [rel, meta] of Object.entries(relations)) {
+    const cleaned = pick(meta, PATCHABLE_RELATION_KEYS);
+    if (meta?.fields && typeof meta.fields === 'object') {
+      cleaned.fields = Object.fromEntries(
+        Object.entries(meta.fields as Record<string, any>).map(([col, fmeta]) => [
+          col,
+          pick(fmeta, PATCHABLE_FIELD_KEYS),
+        ]),
+      );
+    }
+    out[rel] = cleaned;
+  }
+  return out;
+}
+
 export default function MetadataEditorPage() {
   const [query, setQuery] = useState('');
   const [metadata, setMetadata] = useState<any>(null);
@@ -31,11 +57,11 @@ export default function MetadataEditorPage() {
   const save = async () => {
     try {
       const parsed = JSON.parse(editJson);
-      await getAdminClient().provisioning.metadata.patchMetaData({ relations: parsed })
-        .catch((e: any) => {
-          if (e?.status === 204) return;
-          throw e;
-        });
+      // The editor holds the query result, which is already { relations: {...} }.
+      const relations = parsed.relations ?? parsed;
+      await getAdminClient().provisioning.metadata.patchMetaData({
+        relations: stripReadOnly(relations),
+      });
       message.success('Metadata updated');
     } catch (e: unknown) {
       message.error(getErrorMessage(e));

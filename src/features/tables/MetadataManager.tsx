@@ -47,9 +47,6 @@ export default function MetadataManager({ schema, table }: Props) {
             properties: Object.keys(properties).length ? properties : null,
           },
         },
-      }).catch((e: any) => {
-        if (e?.status === 204) return;
-        throw e;
       });
       message.success('Properties updated');
     } catch (e: unknown) {

@@ -101,9 +101,6 @@ export default function ColumnEditor({ schema, table, columns, onRefresh }: Prop
             },
           },
         },
-      }).catch((e: any) => {
-        if (e?.status === 204) return;
-        throw e;
       });
       message.success(`Metadata for "${colName}" updated`);
       await invalidateMeta(schema);
@@ -148,9 +145,6 @@ export default function ColumnEditor({ schema, table, columns, onRefresh }: Prop
         relations: {
           [qualifiedName]: { fields: fieldsPatch },
         },
-      }).catch((e: any) => {
-        if (e?.status === 204) return;
-        throw e;
       });
       message.success(`Metadata updated for ${selectedRows.length} columns`);
       setBulkOpen(false);
@@ -230,9 +224,6 @@ export default function ColumnEditor({ schema, table, columns, onRefresh }: Prop
         relations: {
           [qualifiedName]: { fields: fieldsPatch },
         },
-      }).catch((e: any) => {
-        if (e?.status === 204) return;
-        throw e;
       });
       message.success('Column order updated');
       await invalidateMeta(schema);

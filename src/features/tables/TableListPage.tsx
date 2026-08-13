@@ -164,9 +164,6 @@ function TablesPanel({ schema }: { schema: string }) {
             tags: merged.tags?.length ? merged.tags : null,
           },
         },
-      }).catch((e: any) => {
-        if (e?.status === 204) return;
-        throw e;
       });
       message.success(`Metadata for "${tableName}" updated`);
       await invalidateMeta(schema);
@@ -205,9 +202,6 @@ function TablesPanel({ schema }: { schema: string }) {
             properties: Object.keys(cleaned).length ? cleaned : null,
           },
         },
-      }).catch((e: any) => {
-        if (e?.status === 204) return;
-        throw e;
       });
       message.success(`Properties for "${propsModal}" updated`);
       invalidateMeta(schema);
@@ -268,10 +262,7 @@ function TablesPanel({ schema }: { schema: string }) {
 
     setSavingBulk(true);
     try {
-      await getAdminClient().provisioning.metadata.patchMetaData({ relations }).catch((e: any) => {
-        if (e?.status === 204) return;
-        throw e;
-      });
+      await getAdminClient().provisioning.metadata.patchMetaData({ relations });
       message.success(`Metadata updated for ${selectedRows.length} tables`);
       setBulkOpen(false);
       setSelectedRows([]);
@@ -389,10 +380,7 @@ function TablesPanel({ schema }: { schema: string }) {
     });
 
     try {
-      await getAdminClient().provisioning.metadata.patchMetaData({ relations }).catch((e: any) => {
-        if (e?.status === 204) return;
-        throw e;
-      });
+      await getAdminClient().provisioning.metadata.patchMetaData({ relations });
       message.success('Table order updated');
       await invalidateMeta(schema);
     } catch (e: unknown) {
