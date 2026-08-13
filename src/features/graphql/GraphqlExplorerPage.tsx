@@ -52,10 +52,12 @@ export default function GraphqlExplorerPage() {
   const [schemaTree, setSchemaTree] = useState<DataNode[]>([]);
   const [introLoading, setIntroLoading] = useState(false);
   const [gqlSchema, setGqlSchema] = useState<GraphQLSchema | null>(null);
+  const [introError, setIntroError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!schema) { setSchemaTree([]); setGqlSchema(null); return; }
+    if (!schema) { setSchemaTree([]); setGqlSchema(null); setIntroError(null); return; }
     setIntroLoading(true);
+    setIntroError(null);
     getGql(schema)
       .request({ query: getIntrospectionQuery() })
       .then((res) => {
@@ -63,7 +65,11 @@ export default function GraphqlExplorerPage() {
         setSchemaTree(buildSchemaTree(introData.__schema));
         setGqlSchema(buildClientSchema(introData));
       })
-      .catch(() => { setSchemaTree([]); setGqlSchema(null); })
+      .catch((e: unknown) => {
+        setSchemaTree([]);
+        setGqlSchema(null);
+        setIntroError(getErrorMessage(e));
+      })
       .finally(() => setIntroLoading(false));
   }, [schema]);
 
@@ -113,6 +119,14 @@ export default function GraphqlExplorerPage() {
           message="Could not load schemas"
           description={getErrorMessage(schemasError)}
           action={<Button size="small" onClick={() => refetch()}>Retry</Button>}
+          style={{ marginBottom: 12 }}
+        />
+      )}
+      {introError && (
+        <Alert
+          type="error"
+          message={`Could not load the GraphQL schema for "${schema}"`}
+          description={introError}
           style={{ marginBottom: 12 }}
         />
       )}
