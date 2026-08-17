@@ -18,15 +18,7 @@ import {
   type ActiveLayer,
   type RenderMode,
 } from './mapStore';
-import {
-  computeWmsViewport,
-  fetchWmsImage,
-  latToMercY,
-  lngToMercX,
-  mercXToLng,
-  mercYToLat,
-  wmsLayerName,
-} from './wmsImage';
+import { computeWmsViewport, fetchWmsImage, wmsLayerName } from './wmsImage';
 import LayerStyleDrawer from './LayerStyleDrawer';
 
 const { Text } = Typography;
@@ -430,7 +422,7 @@ export default function MapPage() {
     [addLayer, removeLayer, showWms, removeWms],
   );
 
-  /** Fly to the schema's saved start view (extent wins over center/zoom). */
+  /** Fly to the schema's saved start view (extent wins over center/zoom). All EPSG:4326. */
   const applySchemaView = useCallback(async (schema: string) => {
     const map = mapRef.current;
     if (!map) return;
@@ -440,14 +432,14 @@ export default function MapPage() {
         const [minx, miny, maxx, maxy] = cfg.extent;
         map.fitBounds(
           [
-            [mercXToLng(minx), mercYToLat(miny)],
-            [mercXToLng(maxx), mercYToLat(maxy)],
+            [minx, miny],
+            [maxx, maxy],
           ],
           { padding: 0 },
         );
       } else if (cfg.center) {
         map.jumpTo({
-          center: [mercXToLng(cfg.center[0]), mercYToLat(cfg.center[1])],
+          center: [cfg.center[0], cfg.center[1]],
           zoom: cfg.zoom ?? map.getZoom(),
         });
       }
@@ -464,18 +456,18 @@ export default function MapPage() {
     [applySchemaView],
   );
 
-  /** Save the current viewport as the selected schema's start view. */
+  /** Save the current viewport as the selected schema's start view. All EPSG:4326. */
   const saveSchemaView = useCallback(async () => {
     const map = mapRef.current;
     const schema = mapStore.get().selectedSchema;
     if (!map || !schema) return;
     const c = map.getCenter();
-    const { bbox } = computeWmsViewport(map);
+    const b = map.getBounds();
     try {
       await getAdminClient().provisioning.maps.patchMap(schema, {
-        center: [lngToMercX(c.lng), latToMercY(c.lat)],
+        center: [c.lng, c.lat],
         zoom: map.getZoom(),
-        extent: bbox,
+        extent: [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()],
       });
       message.success(`Start view saved for "${schema}"`);
     } catch (e) {
