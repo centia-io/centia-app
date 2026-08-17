@@ -12,8 +12,8 @@ importers:
         specifier: ^6.1.0
         version: 6.2.5(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@centia-io/sdk':
-        specifier: ^0.2.4
-        version: 0.2.4
+        specifier: ^0.2.5
+        version: 0.2.5
       '@codemirror/lang-json':
         specifier: ^6.0.2
         version: 6.0.2
@@ -224,8 +224,8 @@ packages:
     resolution: {integrity: sha512-4zBIxpPzowiZpusoFkyGVwakdRJUyuH5PxQ/PrqghfdFWWasvnCdPfQXHrenDai+gyLARulZjZowCOj6fjT4pA==}
     engines: {node: '>=6.9.0'}
 
-  '@centia-io/sdk@0.2.4':
-    resolution: {integrity: sha512-K6O1er7j/TanYQj+UPwHgf2daMG4EQW9kpaWN54eZvG8nrkWgEFHon2pYQSDSB4ethavhEw1YbeEZ/CYJF8ZZA==}
+  '@centia-io/sdk@0.2.5':
+    resolution: {integrity: sha512-W6V2BcwYmEdw4TxwWl/BTSOqPz8k/qZ4vLSBKbD+t/g/9okKAeUVLcvWnOkoGzxbaxwlvCmRaPKkMbc4fGYoLQ==}
     engines: {node: '>=18'}
 
   '@codemirror/autocomplete@6.20.3':
@@ -1588,7 +1588,7 @@ snapshots:
       '@babel/helper-string-parser': 7.29.7
       '@babel/helper-validator-identifier': 7.29.7
 
-  '@centia-io/sdk@0.2.4':
+  '@centia-io/sdk@0.2.5':
     dependencies:
       configstore: 7.1.0
       proper-lockfile: 4.1.2
