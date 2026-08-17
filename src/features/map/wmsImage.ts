@@ -19,6 +19,14 @@ export function latToMercY(lat: number): number {
   return (y * EARTH) / 180;
 }
 
+export function mercXToLng(x: number): number {
+  return (x / EARTH) * 180;
+}
+
+export function mercYToLat(y: number): number {
+  return (Math.atan(Math.exp((y / EARTH) * Math.PI)) * 360) / Math.PI - 90;
+}
+
 export interface WmsViewport {
   /** EPSG:3857 minx, miny, maxx, maxy. */
   bbox: [number, number, number, number];

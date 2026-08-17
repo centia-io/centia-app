@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Spin, Alert, Switch, Typography, Select, Segmented, Button, Tooltip } from 'antd';
-import { BgColorsOutlined, WarningOutlined } from '@ant-design/icons';
+import { BgColorsOutlined, SaveOutlined, WarningOutlined } from '@ant-design/icons';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { getAdminClient } from '../../baas/adminClient';
+import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
+import { message } from '../../utils/message';
 import { getSql, getStatus } from '../../baas/client';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -17,7 +18,15 @@ import {
   type ActiveLayer,
   type RenderMode,
 } from './mapStore';
-import { computeWmsViewport, fetchWmsImage, wmsLayerName } from './wmsImage';
+import {
+  computeWmsViewport,
+  fetchWmsImage,
+  latToMercY,
+  lngToMercX,
+  mercXToLng,
+  mercYToLat,
+  wmsLayerName,
+} from './wmsImage';
 import LayerStyleDrawer from './LayerStyleDrawer';
 
 const { Text } = Typography;
@@ -421,6 +430,59 @@ export default function MapPage() {
     [addLayer, removeLayer, showWms, removeWms],
   );
 
+  /** Fly to the schema's saved start view (extent wins over center/zoom). */
+  const applySchemaView = useCallback(async (schema: string) => {
+    const map = mapRef.current;
+    if (!map) return;
+    try {
+      const cfg = await getAdminClient().provisioning.maps.getMap(schema);
+      if (cfg.extent) {
+        const [minx, miny, maxx, maxy] = cfg.extent;
+        map.fitBounds(
+          [
+            [mercXToLng(minx), mercYToLat(miny)],
+            [mercXToLng(maxx), mercYToLat(maxy)],
+          ],
+          { padding: 0 },
+        );
+      } else if (cfg.center) {
+        map.jumpTo({
+          center: [mercXToLng(cfg.center[0]), mercYToLat(cfg.center[1])],
+          zoom: cfg.zoom ?? map.getZoom(),
+        });
+      }
+    } catch (e) {
+      message.error(getErrorMessage(e));
+    }
+  }, []);
+
+  const handleSchemaChange = useCallback(
+    (schema: string) => {
+      mapStore.set({ selectedSchema: schema });
+      applySchemaView(schema);
+    },
+    [applySchemaView],
+  );
+
+  /** Save the current viewport as the selected schema's start view. */
+  const saveSchemaView = useCallback(async () => {
+    const map = mapRef.current;
+    const schema = mapStore.get().selectedSchema;
+    if (!map || !schema) return;
+    const c = map.getCenter();
+    const { bbox } = computeWmsViewport(map);
+    try {
+      await getAdminClient().provisioning.maps.patchMap(schema, {
+        center: [lngToMercX(c.lng), latToMercY(c.lat)],
+        zoom: map.getZoom(),
+        extent: bbox,
+      });
+      message.success(`Start view saved for "${schema}"`);
+    } catch (e) {
+      message.error(getErrorMessage(e));
+    }
+  }, []);
+
   const schemas = [...new Set(geoTables.map((gt) => gt.schema))];
   const visibleTables = selectedSchema
     ? geoTables.filter((gt) => gt.schema === selectedSchema)
@@ -461,14 +523,21 @@ export default function MapPage() {
 
         {schemas.length > 0 && (
           <>
-            <div style={{ padding: '0 16px 12px' }}>
+            <div style={{ display: 'flex', gap: 8, padding: '0 16px 12px' }}>
               <Select
                 placeholder="Select schema"
                 value={selectedSchema}
-                onChange={(v) => mapStore.set({ selectedSchema: v })}
-                style={{ width: '100%' }}
+                onChange={handleSchemaChange}
+                style={{ flex: 1 }}
                 options={schemas.map((s) => ({ label: s, value: s }))}
               />
+              <Tooltip title="Save current view as this schema's start view">
+                <Button
+                  icon={<SaveOutlined />}
+                  disabled={!selectedSchema || !mapReady}
+                  onClick={saveSchemaView}
+                />
+              </Tooltip>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '0 16px' }}>
