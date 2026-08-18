@@ -22,30 +22,9 @@ import {
 } from './mapStore';
 import { computeWmsViewport, fetchWmsImage, wmsLayerName } from './wmsImage';
 import LayerStyleDrawer from './LayerStyleDrawer';
+import { extractGeoTables } from './geoTables';
 
 const { Text } = Typography;
-
-/** Extract tables with geometry/geography columns from schema data. */
-function extractGeoTables(schemas: any[]): GeoTable[] {
-  const result: GeoTable[] = [];
-  for (const s of schemas) {
-    const tables: any[] = s.tables ?? [];
-    for (const t of tables) {
-      const cols: any[] = t.columns ?? [];
-      const geomCol = cols.find(
-        (c: any) =>
-          c.type === 'geometry' ||
-          c.type === 'geography' ||
-          c.type?.startsWith('geometry(') ||
-          c.type?.startsWith('geography('),
-      );
-      if (geomCol) {
-        result.push({ schema: s.name, table: t.name, geomColumn: geomCol.name });
-      }
-    }
-  }
-  return result;
-}
 
 /** Detect the predominant geometry type from a GeoJSON FeatureCollection. */
 function detectGeomType(geojson: GeoJSON.FeatureCollection): string | null {

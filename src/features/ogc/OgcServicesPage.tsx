@@ -1,42 +1,13 @@
 import { useState } from 'react';
-import { Alert, Button, Card, Input, Select, Space, Tooltip, Typography } from 'antd';
-import { CopyOutlined, ExportOutlined } from '@ant-design/icons';
+import { Alert, Card, Select, Space, Typography } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import { getAdminClient } from '../../baas/adminClient';
 import { useAuth } from '../../auth/AuthProvider';
-import { message } from '../../utils/message';
+import UrlField from './UrlField';
 
 const { Text } = Typography;
 
 const SRS_OPTIONS = ['4326', '3857', '25832'];
-
-function UrlField({ label, url, capabilitiesUrl }: {
-  label: string;
-  url: string;
-  /** When set, a GetCapabilities link opens in the browser (no-token variants only). */
-  capabilitiesUrl?: string;
-}) {
-  const copy = async () => {
-    await navigator.clipboard.writeText(url);
-    message.success('URL copied');
-  };
-  return (
-    <div>
-      <Text type="secondary" style={{ fontSize: 12 }}>{label}</Text>
-      <Space.Compact style={{ width: '100%' }}>
-        <Input readOnly value={url} onFocus={(e) => e.target.select()} />
-        <Tooltip title="Copy URL">
-          <Button icon={<CopyOutlined />} onClick={copy} />
-        </Tooltip>
-        {capabilitiesUrl && (
-          <Tooltip title="Open GetCapabilities in browser">
-            <Button icon={<ExportOutlined />} href={capabilitiesUrl} target="_blank" />
-          </Tooltip>
-        )}
-      </Space.Compact>
-    </div>
-  );
-}
 
 export default function OgcServicesPage() {
   const { user } = useAuth();
@@ -98,7 +69,7 @@ export default function OgcServicesPage() {
             <UrlField
               label="Anonymous / HTTP Basic (QGIS and other desktop GIS)"
               url={owsNoToken}
-              capabilitiesUrl={`${owsNoToken}?SERVICE=WMS&REQUEST=GetCapabilities`}
+              openUrl={`${owsNoToken}?SERVICE=WMS&REQUEST=GetCapabilities`}
             />
             <UrlField label="Token-authenticated (programmatic use)" url={owsToken} />
             <Alert
@@ -126,7 +97,7 @@ export default function OgcServicesPage() {
             <UrlField
               label="Anonymous / HTTP Basic (QGIS and other desktop GIS)"
               url={wfsNoToken}
-              capabilitiesUrl={`${wfsNoToken}?SERVICE=WFS&REQUEST=GetCapabilities`}
+              openUrl={`${wfsNoToken}?SERVICE=WFS&REQUEST=GetCapabilities`}
             />
             <UrlField label="Token-authenticated (programmatic use)" url={wfsToken} />
             <Alert
