@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Spin, Alert, Switch, Typography, Select, Segmented, Button, Tooltip } from 'antd';
-import { BgColorsOutlined, SaveOutlined, WarningOutlined } from '@ant-design/icons';
+import { Spin, Alert, Switch, Typography, Select, Segmented, Button, Tooltip, Modal, Radio, Space } from 'antd';
+import { BgColorsOutlined, ClearOutlined, SaveOutlined, WarningOutlined } from '@ant-design/icons';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
@@ -95,6 +95,10 @@ export default function MapPage() {
   const wmsAborts = useRef<Map<string, AbortController>>(new Map());
   const wmsUrls = useRef<Map<string, string>>(new Map());
   const [wmsErrors, setWmsErrors] = useState<Map<string, string>>(new Map());
+  /** Layer whose tile cache is about to be cleared (modal open state). */
+  const [clearCacheTarget, setClearCacheTarget] = useState<GeoTable | null>(null);
+  const [clearScope, setClearScope] = useState<'all' | 'viewport'>('all');
+  const [clearing, setClearing] = useState(false);
 
   const { selectedSchema, activeLayers, wmsRefresh } = useMapStore();
   const { user } = useAuth();
@@ -540,6 +544,31 @@ export default function MapPage() {
     }
   }, []);
 
+  /** Start server-side deletion of the layer's cached tiles (both PNG and MVT tilesets). */
+  const clearTileCache = useCallback(async () => {
+    const gt = clearCacheTarget;
+    const map = mapRef.current;
+    if (!gt || !database) return;
+    const mc = new Mapcache(getAdminClient().http);
+    const opts: { bbox?: string } = {};
+    if (clearScope === 'viewport' && map) {
+      opts.bbox = computeWmsViewport(map).bbox.join(',');
+    }
+    setClearing(true);
+    try {
+      await Promise.all([
+        mc.deleteMapcacheTileset(database, `${gt.schema}.${gt.table}`, opts),
+        mc.deleteMapcacheTileset(database, `${gt.schema}.${gt.table}.mvt`, opts),
+      ]);
+      message.success('Tile cache clearing started');
+      setClearCacheTarget(null);
+    } catch (e) {
+      message.error(getErrorMessage(e));
+    } finally {
+      setClearing(false);
+    }
+  }, [clearCacheTarget, clearScope, database]);
+
   const handleSchemaChange = useCallback(
     (schema: string) => {
       mapStore.set({ selectedSchema: schema });
@@ -648,6 +677,17 @@ export default function MapPage() {
                           onClick={() => openStyleEditor(gt)}
                         />
                       </Tooltip>
+                      <Tooltip title="Clear tile cache">
+                        <Button
+                          size="small"
+                          type="text"
+                          icon={<ClearOutlined />}
+                          onClick={() => {
+                            setClearScope('all');
+                            setClearCacheTarget(gt);
+                          }}
+                        />
+                      </Tooltip>
                       <Switch
                         size="small"
                         checked={isActive(gt)}
@@ -682,6 +722,31 @@ export default function MapPage() {
       <div ref={mapContainer} style={{ flex: 1, minHeight: 0 }} />
 
       <LayerStyleDrawer />
+      <Modal
+        title={
+          clearCacheTarget
+            ? `Clear tile cache: ${clearCacheTarget.schema}.${clearCacheTarget.table}`
+            : 'Clear tile cache'
+        }
+        open={!!clearCacheTarget}
+        onOk={clearTileCache}
+        okText="Clear cache"
+        confirmLoading={clearing}
+        onCancel={() => setClearCacheTarget(null)}
+      >
+        <Space direction="vertical" size="middle">
+          <Text type="secondary">
+            Cached tiles (both image and vector) are deleted on the server in a background job
+            and regenerated on demand.
+          </Text>
+          <Radio.Group value={clearScope} onChange={(e) => setClearScope(e.target.value)}>
+            <Space direction="vertical">
+              <Radio value="all">Entire tileset</Radio>
+              <Radio value="viewport">Only the current map view</Radio>
+            </Space>
+          </Radio.Group>
+        </Space>
+      </Modal>
     </div>
   );
 }
