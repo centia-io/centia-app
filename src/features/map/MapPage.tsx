@@ -5,6 +5,8 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
 import { message } from '../../utils/message';
+import { Mapcache } from '@centia-io/sdk';
+import { useAuth } from '../../auth/AuthProvider';
 import { getSql, getStatus } from '../../baas/client';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -92,6 +94,16 @@ function wmsSourceId(gt: GeoTable) {
   return `wms-${gt.schema}.${gt.table}`;
 }
 
+function tilesSourceId(gt: GeoTable) {
+  return `tiles-${gt.schema}.${gt.table}`;
+}
+
+function mvtSourceId(gt: GeoTable) {
+  return `mvt-${gt.schema}.${gt.table}`;
+}
+
+type TileMode = 'tiles' | 'mvt';
+
 export default function MapPage() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -106,6 +118,8 @@ export default function MapPage() {
   const [wmsErrors, setWmsErrors] = useState<Map<string, string>>(new Map());
 
   const { selectedSchema, activeLayers, wmsRefresh } = useMapStore();
+  const { user } = useAuth();
+  const database = (user?.database as string) ?? '';
 
   const { data: geoTables = [], isLoading: loading, error } = useQuery({
     queryKey: ['schemas'],
@@ -297,6 +311,104 @@ export default function MapPage() {
     });
   }, []);
 
+  /** Add a cached raster-tile or vector-tile rendering for the layer via the MapCache proxy. */
+  const showTiles = useCallback(
+    (gt: GeoTable, mode: TileMode) => {
+      const map = mapRef.current;
+      if (!map || !database) return;
+      const mc = new Mapcache(getAdminClient().http);
+      if (mode === 'tiles') {
+        const sid = tilesSourceId(gt);
+        if (map.getSource(sid)) return;
+        map.addSource(sid, {
+          type: 'raster',
+          tiles: [mc.mapcacheUrl(database, `tms/1.0.0/${gt.schema}.${gt.table}@g20/{z}/{x}/{y}.png`)],
+          tileSize: 256,
+          scheme: 'tms',
+        });
+        map.addLayer({ id: sid, type: 'raster', source: sid });
+      } else {
+        const sid = mvtSourceId(gt);
+        if (map.getSource(sid)) return;
+        const sourceLayer = `${gt.schema}.${gt.table}`;
+        map.addSource(sid, {
+          type: 'vector',
+          tiles: [mc.mapcacheUrl(database, `tms/1.0.0/${gt.schema}.${gt.table}.mvt@g20/{z}/{x}/{y}.mvt`)],
+          scheme: 'tms',
+        });
+        map.addLayer({
+          id: `${sid}-fill`,
+          type: 'fill',
+          source: sid,
+          'source-layer': sourceLayer,
+          filter: ['==', ['geometry-type'], 'Polygon'],
+          paint: { 'fill-color': '#1677ff', 'fill-opacity': 0.3 },
+        });
+        map.addLayer({
+          id: `${sid}-line`,
+          type: 'line',
+          source: sid,
+          'source-layer': sourceLayer,
+          paint: { 'line-color': '#1677ff', 'line-width': 1.5 },
+        });
+        map.addLayer({
+          id: `${sid}-circle`,
+          type: 'circle',
+          source: sid,
+          'source-layer': sourceLayer,
+          filter: ['==', ['geometry-type'], 'Point'],
+          paint: {
+            'circle-radius': 5,
+            'circle-color': '#1677ff',
+            'circle-stroke-color': '#fff',
+            'circle-stroke-width': 1,
+          },
+        });
+        interactiveLayerIds.current.add(`${sid}-fill`);
+        interactiveLayerIds.current.add(`${sid}-line`);
+        interactiveLayerIds.current.add(`${sid}-circle`);
+      }
+    },
+    [database],
+  );
+
+  const removeTiles = useCallback((gt: GeoTable, mode: TileMode) => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (mode === 'tiles') {
+      const sid = tilesSourceId(gt);
+      if (map.getLayer(sid)) map.removeLayer(sid);
+      if (map.getSource(sid)) map.removeSource(sid);
+    } else {
+      const sid = mvtSourceId(gt);
+      for (const suffix of ['-fill', '-line', '-circle']) {
+        if (map.getLayer(sid + suffix)) map.removeLayer(sid + suffix);
+        interactiveLayerIds.current.delete(sid + suffix);
+      }
+      if (map.getSource(sid)) map.removeSource(sid);
+    }
+  }, []);
+
+  /** Add the rendering matching the layer's mode. */
+  const applyRendering = useCallback(
+    (al: ActiveLayer, opts: { fit?: boolean } = {}) => {
+      if (al.renderMode === 'wms') showWms(al);
+      else if (al.renderMode === 'tiles' || al.renderMode === 'mvt') showTiles(al, al.renderMode);
+      else addLayer(al, { fit: opts.fit ?? false });
+    },
+    [showWms, showTiles, addLayer],
+  );
+
+  /** Remove the rendering matching the layer's mode. */
+  const removeRendering = useCallback(
+    (al: ActiveLayer) => {
+      if (al.renderMode === 'wms') removeWms(al);
+      else if (al.renderMode === 'tiles' || al.renderMode === 'mvt') removeTiles(al, al.renderMode);
+      else removeLayer(al);
+    },
+    [removeWms, removeTiles, removeLayer],
+  );
+
   // Initialize map (once per mount) — restore camera + rehydrate active layers from store
   useEffect(() => {
     if (!mapContainer.current) return;
@@ -309,6 +421,13 @@ export default function MapPage() {
       zoom: cam?.zoom ?? 5,
       bearing: cam?.bearing ?? 0,
       pitch: cam?.pitch ?? 0,
+      // MapCache tiles are authorized per request; the token cannot live in the URL.
+      transformRequest: (url) => {
+        if (url.includes('/api/v4/mapcache/')) {
+          return { url, headers: { Authorization: `Bearer ${getStatus().getTokens().accessToken}` } };
+        }
+        return undefined;
+      },
     });
 
     map.addControl(new maplibregl.NavigationControl(), 'top-right');
@@ -367,8 +486,7 @@ export default function MapPage() {
       setMapReady(true);
       // Rehydrate layers from store without overriding saved camera
       for (const al of mapStore.get().activeLayers) {
-        if (al.renderMode === 'wms') showWms(al);
-        else addLayer(al, { fit: false });
+        applyRendering(al);
       }
     });
 
@@ -381,7 +499,7 @@ export default function MapPage() {
       wmsUrls.current.clear();
       map.remove();
     };
-  }, [addLayer, showWms]);
+  }, [addLayer, showWms, applyRendering]);
 
   useEffect(() => {
     if (!mapReady || wmsRefresh === 0) return;
@@ -400,26 +518,21 @@ export default function MapPage() {
           .get()
           .activeLayers.find((x) => x.schema === gt.schema && x.table === gt.table);
         removeActiveLayer(gt);
-        if (al?.renderMode === 'wms') removeWms(gt);
+        if (al) removeRendering(al);
         else removeLayer(gt);
       }
     },
-    [addLayer, removeLayer, removeWms],
+    [addLayer, removeLayer, removeRendering],
   );
 
   const handleModeChange = useCallback(
     (al: ActiveLayer, mode: RenderMode) => {
       if (al.renderMode === mode) return;
+      removeRendering(al);
       setRenderMode(al, mode);
-      if (mode === 'wms') {
-        removeLayer(al);
-        showWms(al);
-      } else {
-        removeWms(al);
-        addLayer(al, { fit: false });
-      }
+      applyRendering({ ...al, renderMode: mode });
     },
-    [addLayer, removeLayer, showWms, removeWms],
+    [applyRendering, removeRendering],
   );
 
   /** Fly to the schema's saved start view (extent wins over center/zoom). All EPSG:4326. */
@@ -572,6 +685,8 @@ export default function MapPage() {
                         options={[
                           { label: 'GeoJSON', value: 'geojson' },
                           { label: 'WMS', value: 'wms' },
+                          { label: 'Tiles', value: 'tiles' },
+                          { label: 'MVT', value: 'mvt' },
                         ]}
                         onChange={(v) => handleModeChange(al, v as RenderMode)}
                       />

@@ -6,7 +6,7 @@ export interface GeoTable {
   geomColumn: string;
 }
 
-export type RenderMode = 'geojson' | 'wms';
+export type RenderMode = 'geojson' | 'wms' | 'tiles' | 'mvt';
 
 export interface ActiveLayer extends GeoTable {
   renderMode: RenderMode;
