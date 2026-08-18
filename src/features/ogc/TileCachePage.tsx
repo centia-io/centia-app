@@ -42,6 +42,8 @@ export default function TileCachePage() {
   const wmtsCapabilities = mc.mapcacheUrl(db, 'wmts/1.0.0/WMTSCapabilities.xml');
   const rasterTemplate = mc.mapcacheUrl(db, `tms/1.0.0/${tileset}@${grid}/{z}/{x}/{y}.png`);
   const mvtTemplate = mc.mapcacheUrl(db, `tms/1.0.0/${tileset}.mvt@${grid}/{z}/{x}/{y}.mvt`);
+  const xyzRasterTemplate = mc.mapcacheUrl(db, `gmaps/${tileset}@${grid}/{z}/{x}/{y}.png`);
+  const xyzMvtTemplate = mc.mapcacheUrl(db, `gmaps/${tileset}.mvt@${grid}/{z}/{x}/{y}.mvt`);
 
   return (
     <div style={{ maxWidth: 860 }}>
@@ -95,6 +97,25 @@ export default function TileCachePage() {
                   HTTP Basic auth (the database&apos;s viewer password). Applications can send an{' '}
                   <Text code>Authorization: Bearer</Text> header instead — the token cannot be
                   put in the URL.
+                </>
+              }
+            />
+          </Space>
+        </Card>
+
+        <Card title="Tile URL templates (Google Maps XYZ)" size="small">
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <UrlField label="Cached image tiles (PNG)" url={xyzRasterTemplate} />
+            <UrlField label="Vector tiles (MVT)" url={xyzMvtTemplate} />
+            <Alert
+              type="info"
+              showIcon
+              message={
+                <>
+                  Standard <Text strong>XYZ</Text> axis order (top-left origin) — usable as-is
+                  with <Text code>{'{y}'}</Text> in a QGIS XYZ connection, MapLibre, Leaflet or
+                  OpenLayers. Prefer this over the TMS templates unless your client specifically
+                  speaks TMS.
                 </>
               }
             />
