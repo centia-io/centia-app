@@ -211,16 +211,9 @@ export const LAYER_PROP_GROUPS: { title: string; fields: FieldDef[] }[] = [
   {
     title: 'Caching & advanced',
     fields: [
-      { key: 'meta_tiles', label: 'Meta tiles', input: 'text' },
-      { key: 'meta_size', label: 'Meta size', input: 'number' },
+      { key: 'meta_tiles', label: 'Meta tiles', input: 'number' },
       { key: 'meta_buffer', label: 'Meta buffer', input: 'number' },
-      { key: 'ttl', label: 'Cache TTL', input: 'number' },
       { key: 'auto_expire', label: 'Auto expire', input: 'number' },
-      { key: 'cache', label: 'Cache type', input: 'select', options: ['disk', 'sqlite', 's3', 'memcache'] },
-      { key: 's3_tile_set', label: 'S3 tile set', input: 'text' },
-      { key: 'bands', label: 'Bands', input: 'text' },
-      { key: 'layers', label: 'Sub-layers', input: 'text' },
-      { key: 'lock', label: 'Lock', input: 'switch' },
     ],
   },
 ];
