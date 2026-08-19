@@ -230,6 +230,7 @@ export default function MapPage() {
       const url = await fetchWmsImage({
         host: import.meta.env.VITE_CENTIA_HOST,
         schema: gt.schema,
+        database,
         wmsLayer: wmsLayerName(gt),
         token: getStatus().getTokens().accessToken,
         viewport,
@@ -267,7 +268,7 @@ export default function MapPage() {
         });
       }
     }
-  }, []);
+  }, [database]);
 
   const removeWms = useCallback((gt: GeoTable) => {
     const map = mapRef.current;

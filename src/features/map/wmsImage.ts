@@ -68,6 +68,7 @@ export function computeWmsViewport(map: MapLibreMap, maxPixels = 2048): WmsViewp
 export async function fetchWmsImage(opts: {
   host: string;
   schema: string;
+  database: string;
   wmsLayer: string;
   token: string;
   viewport: WmsViewport;
@@ -87,7 +88,7 @@ export async function fetchWmsImage(opts: {
     FORMAT: 'image/png',
     TRANSPARENT: 'true',
   });
-  const url = `${opts.host}/api/v4/ows/schema/${encodeURIComponent(opts.schema)}?${params}`;
+  const url = `${opts.host}/api/v4/ows/schema/${encodeURIComponent(opts.schema)}/database/${encodeURIComponent(opts.database)}?${params}`;
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${opts.token}` },
     signal: opts.signal,
