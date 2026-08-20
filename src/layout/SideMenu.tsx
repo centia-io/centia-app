@@ -18,6 +18,7 @@ import {
   ThunderboltOutlined,
   GlobalOutlined,
   AppstoreOutlined,
+  TagsOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -32,6 +33,7 @@ const items = [
     { key: '/sql', icon: <CodeOutlined />, label: 'SQL Console' },
     { key: '/graphql', icon: <ApiOutlined />, label: 'GraphQL Explorer' },
     { key: '/realtime', icon: <ThunderboltOutlined />, label: 'Realtime' },
+    { key: '/keyvalue', icon: <TagsOutlined />, label: 'Key/Value' },
     { key: '/ogc', icon: <GlobalOutlined />, label: 'OGC Services' },
     { key: '/tilecache', icon: <AppstoreOutlined />, label: 'Tile Cache' },
   ]},

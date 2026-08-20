@@ -24,6 +24,7 @@ const GitCommitPage = lazy(() => import('./features/git/GitCommitPage'));
 const MapPage = lazy(() => import('./features/map/MapPage'));
 const OgcServicesPage = lazy(() => import('./features/ogc/OgcServicesPage'));
 const TileCachePage = lazy(() => import('./features/ogc/TileCachePage'));
+const KeyValuePage = lazy(() => import('./features/keyvalue/KeyValuePage'));
 
 const ProtectedRoute = lazy(() => import('./auth/ProtectedRoute'));
 
@@ -56,6 +57,7 @@ export const routes: RouteObject[] = [
       { path: 'realtime', element: <RealtimePage /> },
       { path: 'ogc', element: <OgcServicesPage /> },
       { path: 'tilecache', element: <TileCachePage /> },
+      { path: 'keyvalue', element: <KeyValuePage /> },
       { path: 'users', element: <UserListPage /> },
       { path: 'clients', element: <ClientListPage /> },
       { path: 'rules', element: <RuleListPage /> },
