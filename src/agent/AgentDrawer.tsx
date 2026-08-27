@@ -5,14 +5,17 @@ import { getStatus } from '../baas/client';
 import { queryClient } from '../data/queryClient';
 import { bumpWmsRefresh } from '../features/map/mapStore';
 import { useTheme } from '../theme/ThemeProvider';
-import { agentStore, closeAgent } from './agentStore';
+import { agentStore, closeAgent, useAgentStore } from './agentStore';
 import { getAgentContext } from './agentContext';
 
 const LAYER_TOOL = /Layer|Style|Label|Class/;
 const WRITE_TOOL = /^(post|patch|delete)[A-Z]/;
+/** Tools the server classifies as read-only despite matching WRITE_TOOL's naming convention. */
+const READ_EXTRA = new Set(['postSql']);
+const isWriteTool = (name: string) => !READ_EXTRA.has(name) && WRITE_TOOL.test(name);
 
 export default function AgentDrawer() {
-  const { open, messages } = agentStore.useStore();
+  const { open, messages } = useAgentStore();
   const { resolved } = useTheme();
 
   return (
@@ -34,7 +37,7 @@ export default function AgentDrawer() {
           initialMessages={messages}
           onMessagesChange={(m) => agentStore.set({ messages: m })}
           onToolExecuted={(name) => {
-            if (!WRITE_TOOL.test(name)) return;
+            if (!isWriteTool(name)) return;
             queryClient.invalidateQueries();
             if (LAYER_TOOL.test(name)) bumpWmsRefresh();
           }}
