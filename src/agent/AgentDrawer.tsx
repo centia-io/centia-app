@@ -1,12 +1,12 @@
 import { Drawer } from 'antd';
 import { AgentChat } from '@centia-io/agent-ui';
 import '@centia-io/agent-ui/styles.css';
-import { getStatus } from '../baas/client';
 import { queryClient } from '../data/queryClient';
 import { bumpWmsRefresh } from '../features/map/mapStore';
 import { useTheme } from '../theme/ThemeProvider';
 import { agentStore, closeAgent, useAgentStore } from './agentStore';
 import { getAgentContext } from './agentContext';
+import { getAgentAccessToken } from './agentToken';
 
 const LAYER_TOOL = /Layer|Style|Label|Class/;
 const WRITE_TOOL = /^(post|patch|delete)[A-Z]/;
@@ -32,7 +32,7 @@ export default function AgentDrawer() {
       <div data-ca-theme={resolved} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
         <AgentChat
           endpoint="/agent/api/chat"
-          getToken={() => getStatus().getTokens().accessToken}
+          getToken={getAgentAccessToken}
           getContext={getAgentContext}
           initialMessages={messages}
           onMessagesChange={(m) => agentStore.set({ messages: m })}
