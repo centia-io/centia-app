@@ -23,6 +23,7 @@ import {
 import { computeWmsViewport, fetchWmsImage, wmsLayerName } from './wmsImage';
 import LayerStyleDrawer from './LayerStyleDrawer';
 import { extractGeoTables } from './geoTables';
+import { clearAgentPageContext, setAgentPageContext } from '../../agent/agentContext';
 
 const { Text } = Typography;
 
@@ -491,6 +492,19 @@ export default function MapPage() {
       if (al.renderMode === 'wms') showWms(al);
     }
   }, [wmsRefresh, mapReady, showWms]);
+
+  useEffect(() => {
+    setAgentPageContext('map', {
+      description: 'Map page: schema and active layers with render modes',
+      schema: selectedSchema,
+      activeLayers: activeLayers.map((l) => ({
+        layer: `${l.schema}.${l.table}`,
+        geomColumn: l.geomColumn,
+        renderMode: l.renderMode,
+      })),
+    });
+    return () => clearAgentPageContext('map');
+  }, [selectedSchema, activeLayers]);
 
   const handleToggle = useCallback(
     (gt: GeoTable, checked: boolean) => {
