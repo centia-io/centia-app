@@ -2,6 +2,7 @@ import { Layout, Typography, theme } from 'antd';
 import { Outlet } from 'react-router-dom';
 import SideMenu from './SideMenu';
 import HeaderBar from './HeaderBar';
+import AgentDrawer from '../agent/AgentDrawer';
 import { useTheme } from '../theme/ThemeProvider';
 
 const { Sider, Header, Content } = Layout;
@@ -32,6 +33,7 @@ export default function AppLayout() {
           <Outlet />
         </Content>
       </Layout>
+      <AgentDrawer />
     </Layout>
   );
 }

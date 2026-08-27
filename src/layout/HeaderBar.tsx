@@ -1,7 +1,8 @@
 import { Button, Space, Typography, Segmented } from 'antd';
-import { LogoutOutlined, SunOutlined, MoonOutlined, DesktopOutlined } from '@ant-design/icons';
+import { LogoutOutlined, SunOutlined, MoonOutlined, DesktopOutlined, RobotOutlined } from '@ant-design/icons';
 import { useAuth } from '../auth/AuthProvider';
 import { useTheme } from '../theme/ThemeProvider';
+import { openAgent } from '../agent/agentStore';
 
 type ThemeMode = 'light' | 'dark' | 'auto';
 
@@ -18,6 +19,9 @@ export default function HeaderBar() {
 
   return (
     <Space style={{ float: 'right' }}>
+      <Button size="small" type="primary" ghost icon={<RobotOutlined />} onClick={openAgent}>
+        AI
+      </Button>
       <Segmented
         size="small"
         value={mode}
