@@ -8,6 +8,9 @@ import { agentStore, closeAgent, useAgentStore } from './agentStore';
 import { getAgentContext } from './agentContext';
 import { getAgentAccessToken } from './agentToken';
 
+/** Agent backend; relative default is proxied (Vite dev proxy / reverse proxy). */
+const AGENT_ENDPOINT = import.meta.env.VITE_AGENT_ENDPOINT || '/agent/api/chat';
+
 const LAYER_TOOL = /Layer|Style|Label|Class/;
 const WRITE_TOOL = /^(post|patch|delete)[A-Z]/;
 /** Tools the server classifies as read-only despite matching WRITE_TOOL's naming convention. */
@@ -31,7 +34,7 @@ export default function AgentDrawer() {
     >
       <div data-ca-theme={resolved} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
         <AgentChat
-          endpoint="/agent/api/chat"
+          endpoint={AGENT_ENDPOINT}
           getToken={getAgentAccessToken}
           getContext={getAgentContext}
           initialMessages={messages}
