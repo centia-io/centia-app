@@ -41,7 +41,7 @@ export default function AgentDrawer() {
             queryClient.invalidateQueries();
             if (LAYER_TOOL.test(name)) bumpWmsRefresh();
           }}
-          locale="da"
+          locale="en"
         />
       </div>
     </Drawer>
