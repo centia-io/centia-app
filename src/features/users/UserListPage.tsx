@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Table, Button, Space, Drawer, Form, Input, Select, Spin, Alert, Switch, Tag } from 'antd';
 import { message } from '../../utils/message';
 import { PlusOutlined, DeleteOutlined, EditOutlined, SearchOutlined } from '@ant-design/icons';
+import type { CreateUserRequest, PatchUserRequest } from '@centia-io/sdk';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
 import { confirmDelete } from '../../components/ConfirmDelete';
 import { useQuery } from '@tanstack/react-query';
@@ -50,11 +51,14 @@ export default function UserListPage() {
     const values = await form.validateFields();
     const isEdit = !!editUser;
     // default_user must always be sent explicitly: the API resets an omitted flag to false.
-    const payload = {
+    const payload: Record<string, unknown> = {
       ...values,
       user_group: values.user_group?.length ? values.user_group : null,
       default_user: !!values.default_user,
     };
+    // A blank password on edit means "leave unchanged" — omit the property so
+    // the API does not try to set it. (Create requires a password via validation.)
+    if (!payload.password) delete payload.password;
     setSaving(true);
     try {
       // A partial unique index allows only one default user, so demote the current one first.
@@ -63,18 +67,20 @@ export default function UserListPage() {
           (u) => u.default_user && u.name !== (isEdit ? editUser.name : values.name),
         );
         if (previous) {
+          // password omitted deliberately: sending it (even null/'') makes the API try to set it.
           await getAdminClient().provisioning.users.patchUser(previous.name, {
             email: previous.email,
-            password: null,
             default_user: false,
             user_group: toGroups(previous.user_group).length ? toGroups(previous.user_group) : null,
-          });
+          } as PatchUserRequest);
         }
       }
       if (isEdit) {
-        await getAdminClient().provisioning.users.patchUser(editUser.name, payload);
+        // Cast: the SDK's PatchUserRequest still requires `password`; an omitted
+        // property is the intended wire shape (leave the password unchanged).
+        await getAdminClient().provisioning.users.patchUser(editUser.name, payload as unknown as PatchUserRequest);
       } else {
-        await getAdminClient().provisioning.users.postUser(payload);
+        await getAdminClient().provisioning.users.postUser(payload as unknown as CreateUserRequest);
       }
       message.success(isEdit ? 'User updated' : 'User created');
       queryClient.invalidateQueries({ queryKey: ['users'] });
