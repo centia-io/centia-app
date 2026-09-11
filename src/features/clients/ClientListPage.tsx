@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Table, Button, Space, Drawer, Form, Input, Switch, Spin, Alert, Tag } from 'antd';
+import { Table, Button, Space, Drawer, Form, Input, Modal, Switch, Spin, Alert, Tag, Typography } from 'antd';
 import { message } from '../../utils/message';
-import { PlusOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, EditOutlined, CopyOutlined } from '@ant-design/icons';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
 import { confirmDelete } from '../../components/ConfirmDelete';
 import { useQuery } from '@tanstack/react-query';
@@ -61,6 +61,49 @@ function clientColumns(onEdit: (r: any) => void, onDelete: (id: string) => void)
   ];
 }
 
+/**
+ * One-time display of a newly created client's secret. The API returns it
+ * only on creation; once this dialog is closed it cannot be shown again.
+ */
+function SecretModal({ secret, onClose }: { secret: string | null; onClose: () => void }) {
+  return (
+    <Modal
+      title="Client secret"
+      open={secret !== null}
+      onCancel={onClose}
+      maskClosable={false}
+      footer={
+        <Button type="primary" onClick={onClose}>
+          I have stored the secret
+        </Button>
+      }
+    >
+      <Space direction="vertical" style={{ width: '100%' }}>
+        <Alert
+          type="warning"
+          showIcon
+          message="This secret is shown only once. Copy and store it now — it cannot be retrieved later."
+        />
+        <Space.Compact style={{ width: '100%' }}>
+          <Input readOnly value={secret ?? ''} style={{ fontFamily: 'monospace' }} />
+          <Button
+            icon={<CopyOutlined />}
+            onClick={async () => {
+              await navigator.clipboard.writeText(secret ?? '');
+              message.success('Secret copied');
+            }}
+          >
+            Copy
+          </Button>
+        </Space.Compact>
+        <Typography.Text type="secondary">
+          Use it as the client_secret for this OAuth client.
+        </Typography.Text>
+      </Space>
+    </Modal>
+  );
+}
+
 function parseRedirectUris(values: any) {
   if (typeof values.redirect_uri === 'string') {
     values.redirect_uri = values.redirect_uri.split(',').map((s: string) => s.trim()).filter(Boolean);
@@ -75,6 +118,7 @@ export default function ClientListPage() {
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [editClient, setEditClient] = useState<any>(null);
+  const [createdSecret, setCreatedSecret] = useState<string | null>(null);
   const [form] = Form.useForm();
 
   const { data, isLoading, error } = useQuery({
@@ -95,7 +139,9 @@ export default function ClientListPage() {
       if (isEdit) {
         await getAdminClient().provisioning.clients.patchClient(editClient.id, values);
       } else {
-        await getAdminClient().provisioning.clients.postClient(values);
+        const created = await getAdminClient().provisioning.clients.postClient(values);
+        // The secret exists only in this response — surface it once, never store it.
+        if (created?.secret) setCreatedSecret(created.secret);
       }
       message.success(isEdit ? 'Client updated' : 'Client created');
       queryClient.invalidateQueries({ queryKey: ['clients'] });
@@ -152,6 +198,7 @@ export default function ClientListPage() {
         extra={<Button type="primary" onClick={handleSave} loading={saving}>Save</Button>}>
         <ClientForm form={form} isEdit={!!editClient} />
       </Drawer>
+      <SecretModal secret={createdSecret} onClose={() => setCreatedSecret(null)} />
     </div>
   );
 }
