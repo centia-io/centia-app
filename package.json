@@ -15,7 +15,7 @@
     "@ant-design/icons": "^6.1.0",
     "@centia-io/agent-protocol": "^0.1.0",
     "@centia-io/agent-ui": "^0.1.0",
-    "@centia-io/sdk": "^0.2.10",
+    "@centia-io/sdk": "^0.2.13",
     "@codemirror/lang-json": "^6.0.2",
     "@codemirror/lang-sql": "^6.10.0",
     "@codemirror/state": "^6.5.4",
