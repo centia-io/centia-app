@@ -123,6 +123,7 @@ function parseRedirectUris(values: any) {
   if (typeof values.redirect_uri === 'string') {
     values.redirect_uri = values.redirect_uri.split(',').map((s: string) => s.trim()).filter(Boolean);
   }
+  // Wire contract: always an array; [] means "no redirect URIs" (clears on edit).
   values.redirect_uri = (values.redirect_uri ?? []).map((s: string) => s.trim()).filter(Boolean);
   return values;
 }
