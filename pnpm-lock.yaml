@@ -18,8 +18,8 @@ importers:
         specifier: ^0.1.0
         version: 0.1.0(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@centia-io/sdk':
-        specifier: ^0.2.10
-        version: 0.2.10
+        specifier: ^0.2.13
+        version: 0.2.13
       '@codemirror/lang-json':
         specifier: ^6.0.2
         version: 6.0.2
@@ -239,8 +239,8 @@ packages:
       react: '>=18'
       react-dom: '>=18'
 
-  '@centia-io/sdk@0.2.10':
-    resolution: {integrity: sha512-Zs06pQzVhjfWCsuqM2KXD2GEP52786dPUHYmWEz4PGLuoZC6FcG5dV456H2fNsvzmYlwoeUBryotB/buo79zsw==}
+  '@centia-io/sdk@0.2.13':
+    resolution: {integrity: sha512-5EJQ38y2K0cfBmbdri49udgE/z0YNSPardH+qfNTyQ47so3sPWLMpU4XHRaGpabE1kHBL7/ERo29s8uSc1Lm4Q==}
     engines: {node: '>=18'}
 
   '@codemirror/autocomplete@6.20.3':
@@ -1913,7 +1913,7 @@ snapshots:
       - '@types/react'
       - supports-color
 
-  '@centia-io/sdk@0.2.10':
+  '@centia-io/sdk@0.2.13':
     dependencies:
       configstore: 7.1.0
       proper-lockfile: 4.1.2
