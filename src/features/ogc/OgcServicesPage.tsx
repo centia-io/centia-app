@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getAdminClient } from '../../baas/adminClient';
 import { useAuth } from '../../auth/AuthProvider';
 import UrlField from './UrlField';
+import OgcApiCard from './OgcApiCard';
 
 const { Text } = Typography;
 
@@ -113,6 +114,8 @@ export default function OgcServicesPage() {
             />
           </Space>
         </Card>
+
+        <OgcApiCard host={host} database={database} schema={schema} />
       </Space>
     </div>
   );
