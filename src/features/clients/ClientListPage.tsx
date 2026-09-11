@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Table, Button, Space, Drawer, Form, Input, Modal, Switch, Spin, Alert, Tag, Typography } from 'antd';
+import { Table, Button, Space, Drawer, Form, Input, Modal, Select, Switch, Spin, Alert, Tag, Typography } from 'antd';
 import { message } from '../../utils/message';
 import { PlusOutlined, DeleteOutlined, EditOutlined, CopyOutlined } from '@ant-design/icons';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
@@ -26,8 +26,18 @@ function ClientForm({ form, isEdit }: { form: ReturnType<typeof Form.useForm>[0]
       <Form.Item name="homepage" label="Homepage URL">
         <Input />
       </Form.Item>
-      <Form.Item name="redirect_uri" label="Redirect URIs (comma-separated)">
-        <Input.TextArea rows={2} />
+      <Form.Item
+        name="redirect_uri"
+        label="Redirect URIs"
+        extra="Type a URI and press Enter (or comma) to add it."
+      >
+        <Select
+          mode="tags"
+          open={false}
+          suffixIcon={null}
+          tokenSeparators={[',', ' ']}
+          placeholder="https://app.example.com/callback"
+        />
       </Form.Item>
       <Form.Item name="public" label="Public Client" valuePropName="checked">
         <Switch />
@@ -109,9 +119,11 @@ function SecretModal({ secret, onClose }: { secret: string | null; onClose: () =
 }
 
 function parseRedirectUris(values: any) {
+  // The tags Select yields a string[]; tolerate a legacy comma-separated string.
   if (typeof values.redirect_uri === 'string') {
     values.redirect_uri = values.redirect_uri.split(',').map((s: string) => s.trim()).filter(Boolean);
   }
+  values.redirect_uri = (values.redirect_uri ?? []).map((s: string) => s.trim()).filter(Boolean);
   return values;
 }
 
@@ -179,7 +191,7 @@ export default function ClientListPage() {
     setEditClient(record);
     form.setFieldsValue({
       ...record,
-      redirect_uri: record.redirect_uri?.join(', ') ?? '',
+      redirect_uri: record.redirect_uri ?? [],
     });
     setDrawerOpen(true);
   };
