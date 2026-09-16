@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert, AutoComplete, Button, Card, Descriptions, InputNumber, Popover, Select, Space, Spin,
   Table, Tag, Tooltip, Typography,
@@ -138,6 +138,17 @@ export default function SnapshotsPage() {
       (q.state.data ?? []).some((j: SnapshotJob) => j.status === 'pending' || j.status === 'running') ? 3000 : false,
   });
   const jobs = jobsQuery.data ?? [];
+
+  // When the last active job finishes, the published list may have grown —
+  // refresh it (and once on the pending→terminal transition of a fresh queue).
+  const hasActive = jobs.some((j) => j.status === 'pending' || j.status === 'running');
+  const hadActive = useRef(false);
+  useEffect(() => {
+    if (hadActive.current && !hasActive) {
+      queryClient.invalidateQueries({ queryKey: ['relation-snapshots'] });
+    }
+    hadActive.current = hasActive;
+  }, [hasActive]);
 
   // ──── Published snapshots for the chosen relation ────
 
