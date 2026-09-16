@@ -72,12 +72,10 @@ export default function UserListPage() {
             email: previous.email,
             default_user: false,
             user_group: toGroups(previous.user_group).length ? toGroups(previous.user_group) : null,
-          } as PatchUserRequest);
+          });
         }
       }
       if (isEdit) {
-        // Cast: the SDK's PatchUserRequest still requires `password`; an omitted
-        // property is the intended wire shape (leave the password unchanged).
         await getAdminClient().provisioning.users.patchUser(editUser.name, payload as unknown as PatchUserRequest);
       } else {
         await getAdminClient().provisioning.users.postUser(payload as unknown as CreateUserRequest);

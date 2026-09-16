@@ -1,6 +1,7 @@
 import { Menu } from 'antd';
 import { useEffect, useRef } from 'react';
 import {
+  CameraOutlined,
   DashboardOutlined,
   DatabaseOutlined,
   TableOutlined,
@@ -50,6 +51,7 @@ const items = [
     { key: '/map', icon: <EnvironmentOutlined />, label: 'Map' },
   ]},
   { type: 'group' as const, label: 'Tools', children: [
+    { key: '/snapshots', icon: <CameraOutlined />, label: 'Snapshots' },
     { key: '/metadata', icon: <FileTextOutlined />, label: 'Metadata' },
     { key: '/import', icon: <CloudUploadOutlined />, label: 'File Import' },
     { key: '/git', icon: <BranchesOutlined />, label: 'Git Commit' },
