@@ -18,6 +18,25 @@ const CRON_PRESETS: { label: string; value: string }[] = [
 /** 5 whitespace-separated cron fields; the server does the real validation. */
 const CRON_SHAPE = /^\S+\s+\S+\s+\S+\s+\S+\s+\S+$/;
 
+/**
+ * Mirror of GC2's Model::toAscii(name, null, "_"): transliterate to ASCII,
+ * drop everything but letters/digits and \/ _ | + space -, lower-case, trim
+ * leading/trailing "-", collapse separator runs to one "_".
+ */
+export function normalizeJobName(name: string): string {
+  return name
+    .replace(/[æÆ]/g, 'ae')
+    .replace(/[øØ]/g, 'oe')
+    .replace(/[åÅ]/g, 'aa')
+    .replace(/ß/g, 'ss')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Za-z0-9/_|+ -]/g, '')
+    .toLowerCase()
+    .replace(/^-+|-+$/g, '')
+    .replace(/[/_|+ -]+/g, '_');
+}
+
 export default function JobFormDrawer({
   open,
   job,
@@ -36,6 +55,7 @@ export default function JobFormDrawer({
 }) {
   const [form] = Form.useForm();
   const [preset, setPreset] = useState<string | undefined>();
+  const nameValue = Form.useWatch('name', form) as string | undefined;
 
   useEffect(() => {
     if (!open) return;
@@ -76,7 +96,16 @@ export default function JobFormDrawer({
           snapshot: false,
         }}
       >
-        <Form.Item name="name" label="Name" rules={[{ required: true }]}>
+        <Form.Item
+          name="name"
+          label="Name"
+          rules={[{ required: true }]}
+          extra={
+            nameValue && normalizeJobName(nameValue) !== nameValue ? (
+              <>Will be stored as <Text code>{normalizeJobName(nameValue)}</Text> (the import table is named after the job).</>
+            ) : undefined
+          }
+        >
           <Input />
         </Form.Item>
         <Form.Item name="schema" label="Target schema" rules={[{ required: true }]}>
