@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  Alert, Button, Card, Descriptions, Drawer, Select, Space, Table, Tag, Tooltip, Typography,
+  Alert, Button, Descriptions, Drawer, Input, Select, Space, Table, Tabs, Tag, Tooltip, Typography,
 } from 'antd';
 import {
   CaretRightOutlined, DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, StopOutlined,
@@ -36,6 +36,7 @@ export default function SchedulerPage() {
   const isSuperUser = user?.superUser === true;
 
   const [selectedJobIds, setSelectedJobIds] = useState<number[]>([]);
+  const [jobSearch, setJobSearch] = useState('');
   const [formOpen, setFormOpen] = useState(false);
   const [editJob, setEditJob] = useState<SchedulerJob | null>(null);
   const [saving, setSaving] = useState(false);
@@ -62,6 +63,14 @@ export default function SchedulerPage() {
   });
   const jobs = jobsQuery.data ?? [];
   const jobById = new Map(jobs.map((j) => [j.id, j]));
+  // Legacy rows can carry null name/url despite the declared types — stay null-safe.
+  const visibleJobs = jobSearch
+    ? jobs.filter((j) =>
+        [j.name, j.schema, j.url, String(j.id)].some((v) =>
+          (v ?? '').toLowerCase().includes(jobSearch.toLowerCase()),
+        ),
+      )
+    : jobs;
 
   const runsQuery = useQuery({
     queryKey: ['scheduler-runs', runJobFilter, runStatusFilter],
@@ -164,23 +173,6 @@ export default function SchedulerPage() {
     <div>
       <Space style={{ marginBottom: 16, justifyContent: 'space-between', width: '100%' }}>
         <h2>Scheduler</h2>
-        <Space>
-          {selectedJobIds.length > 0 && (
-            <Button danger icon={<DeleteOutlined />} onClick={() => handleDelete(selectedJobIds)}>
-              Delete selected ({selectedJobIds.length})
-            </Button>
-          )}
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => {
-              setEditJob(null);
-              setFormOpen(true);
-            }}
-          >
-            New job
-          </Button>
-        </Space>
       </Space>
 
       <Alert
@@ -190,21 +182,48 @@ export default function SchedulerPage() {
         message="Scheduler jobs import a file or service into a schema on a cron schedule (via ogr2ogr). A job can optionally queue a Parquet snapshot after each successful import."
       />
 
-      <Card
-        title="Jobs"
-        size="small"
-        style={{ marginBottom: 16 }}
-        extra={
+      <Tabs
+        defaultActiveKey="jobs"
+        tabBarExtraContent={
           <Button size="small" icon={<ReloadOutlined />} onClick={refreshAll}>
             Refresh
           </Button>
         }
-      >
-        <Table
-          dataSource={jobs}
+        items={[
+          { key: 'jobs',
+            label: `Jobs (${jobs.length})`,
+            children: (
+              <>
+                <Space style={{ marginBottom: 12, justifyContent: 'space-between', width: '100%' }}>
+                  <Input.Search
+                    placeholder="Search name, schema or URL..."
+                    allowClear
+                    onChange={(e) => setJobSearch(e.target.value)}
+                    style={{ width: 320 }}
+                  />
+                  <Space>
+                    {selectedJobIds.length > 0 && (
+                      <Button danger icon={<DeleteOutlined />} onClick={() => handleDelete(selectedJobIds)}>
+                        Delete selected ({selectedJobIds.length})
+                      </Button>
+                    )}
+                    <Button
+                      type="primary"
+                      icon={<PlusOutlined />}
+                      onClick={() => {
+                        setEditJob(null);
+                        setFormOpen(true);
+                      }}
+                    >
+                      New job
+                    </Button>
+                  </Space>
+                </Space>
+                <Table
+          dataSource={visibleJobs}
           rowKey="id"
           size="small"
-          pagination={false}
+          pagination={{ pageSize: 25, showSizeChanger: true }}
           loading={jobsQuery.isLoading}
           rowSelection={{
             selectedRowKeys: selectedJobIds,
@@ -212,8 +231,11 @@ export default function SchedulerPage() {
           }}
           locale={{ emptyText: 'No scheduler jobs yet.' }}
           columns={[
+            { title: 'Id', dataIndex: 'id', key: 'id', width: 80,
+              sorter: (a: SchedulerJob, b: SchedulerJob) => a.id - b.id,
+            },
             { title: 'Name', dataIndex: 'name', key: 'name',
-              sorter: (a: SchedulerJob, b: SchedulerJob) => a.name.localeCompare(b.name),
+              sorter: (a: SchedulerJob, b: SchedulerJob) => (a.name ?? '').localeCompare(b.name ?? ''),
             },
             { title: 'Schema', dataIndex: 'schema', key: 'schema' },
             { title: 'URL', dataIndex: 'url', key: 'url', ellipsis: true,
@@ -261,21 +283,22 @@ export default function SchedulerPage() {
             },
           ]}
         />
-      </Card>
-
-      <Card
-        title={
-          <Space>
-            Runs
-            {anyRunning && <Tag color="processing">live</Tag>}
-          </Space>
-        }
-        size="small"
-        extra={
-          <Space>
+              </>
+            ),
+          },
+          { key: 'runs',
+            label: (
+              <Space size={6}>
+                Runs
+                {anyRunning && <Tag color="processing" style={{ margin: 0 }}>live</Tag>}
+              </Space>
+            ),
+            children: (
+              <>
+                <Space style={{ marginBottom: 12 }}>
             <Select
               placeholder="All jobs"
-              style={{ width: 200 }}
+              style={{ width: 240 }}
               size="small"
               allowClear
               value={runJobFilter}
@@ -291,14 +314,12 @@ export default function SchedulerPage() {
               onChange={(v) => setRunStatusFilter(v ?? null)}
               options={RUN_STATUSES.map((s) => ({ label: s, value: s }))}
             />
-          </Space>
-        }
-      >
-        <Table
+                </Space>
+                <Table
           dataSource={runs}
           rowKey="uuid"
           size="small"
-          pagination={false}
+          pagination={{ pageSize: 25 }}
           loading={runsQuery.isLoading}
           locale={{ emptyText: 'No runs.' }}
           columns={[
@@ -346,7 +367,11 @@ export default function SchedulerPage() {
             },
           ]}
         />
-      </Card>
+              </>
+            ),
+          },
+        ]}
+      />
 
       <JobFormDrawer
         open={formOpen}
