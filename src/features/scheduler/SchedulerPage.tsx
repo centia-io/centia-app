@@ -237,20 +237,29 @@ export default function SchedulerPage() {
             { title: 'Name', dataIndex: 'name', key: 'name',
               sorter: (a: SchedulerJob, b: SchedulerJob) => (a.name ?? '').localeCompare(b.name ?? ''),
             },
-            { title: 'Schema', dataIndex: 'schema', key: 'schema' },
+            { title: 'Schema', dataIndex: 'schema', key: 'schema',
+              sorter: (a: SchedulerJob, b: SchedulerJob) => (a.schema ?? '').localeCompare(b.schema ?? ''),
+            },
             { title: 'URL', dataIndex: 'url', key: 'url', ellipsis: true,
+              sorter: (a: SchedulerJob, b: SchedulerJob) => (a.url ?? '').localeCompare(b.url ?? ''),
               render: (v: string) => <Tooltip title={v}>{v}</Tooltip>,
             },
             { title: 'Schedule', dataIndex: 'schedule', key: 'schedule',
+              sorter: (a: SchedulerJob, b: SchedulerJob) => (a.schedule ?? '').localeCompare(b.schedule ?? ''),
               render: (v: string) => <Text code>{v}</Text>,
             },
             { title: 'Active', dataIndex: 'active', key: 'active',
+              sorter: (a: SchedulerJob, b: SchedulerJob) => Number(a.active) - Number(b.active),
               render: (v: boolean) => (v ? <Tag color="green">active</Tag> : <Tag>inactive</Tag>),
             },
             { title: 'Snapshot', dataIndex: 'snapshot', key: 'snapshot',
+              sorter: (a: SchedulerJob, b: SchedulerJob) => Number(a.snapshot) - Number(b.snapshot),
               render: (v: boolean) => (v ? <Tag color="blue">yes</Tag> : null),
             },
             { title: 'Last run', key: 'lastrun',
+              // ok/failed first by status, then newest run; never-run rows sort last.
+              sorter: (a: SchedulerJob, b: SchedulerJob) =>
+                (a.lastrun ?? '').localeCompare(b.lastrun ?? ''),
               render: (_: unknown, j: SchedulerJob) =>
                 j.lastcheck === null ? (
                   <Text type="secondary">never</Text>
