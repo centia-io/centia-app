@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert, AutoComplete, Button, Card, Descriptions, InputNumber, Popover, Select, Space, Spin,
+  Alert, AutoComplete, Button, Card, Checkbox, Descriptions, InputNumber, Popover, Select, Space, Spin,
   Table, Tag, Tooltip, Typography,
 } from 'antd';
 import {
@@ -8,7 +8,7 @@ import {
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { Snapshots, isCentiaApiError } from '@centia-io/sdk';
-import type { RelationSnapshot, SnapshotJob, SnapshotStatus } from '@centia-io/sdk';
+import type { RelationSnapshot, SnapshotFormat, SnapshotFormatResult, SnapshotJob, SnapshotStatus } from '@centia-io/sdk';
 import { message } from '../../utils/message';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
 import { getStatus } from '../../baas/client';
@@ -31,6 +31,31 @@ const STATUS_COLOR: Record<SnapshotStatus, string> = {
   failed: 'error',
   superseded: 'warning',
 };
+
+const KNOWN_FORMATS: SnapshotFormat[] = ['parquet', 'flatgeobuf'];
+const FORMAT_EXT: Record<string, string> = { parquet: 'parquet', flatgeobuf: 'fgb' };
+
+const producedFormats = (snap: { formats?: SnapshotFormatResult[] }): SnapshotFormatResult[] =>
+  (snap.formats ?? []).filter((f) => f.status === 'produced');
+
+/** produced = green, skipped = orange with the reason, requested = blue. */
+function FormatBadges({ formats }: { formats?: SnapshotFormatResult[] }) {
+  if (!formats || formats.length === 0) return null;
+  return (
+    <Space size={4} wrap>
+      {formats.map((f) => (
+        <Tooltip key={f.format} title={f.status === 'skipped' ? f.reason : f.media_type}>
+          <Tag
+            style={{ margin: 0 }}
+            color={f.status === 'produced' ? 'green' : f.status === 'skipped' ? 'orange' : 'blue'}
+          >
+            {f.format}
+          </Tag>
+        </Tooltip>
+      ))}
+    </Space>
+  );
+}
 
 function humanBytes(n: number): string {
   if (n < 1024) return `${n} B`;
@@ -102,6 +127,7 @@ export default function SnapshotsPage() {
   const [schema, setSchema] = useState<string | null>(null);
   const [relation, setRelation] = useState<string>('');
   const [srs, setSrs] = useState<number | null>(null);
+  const [wantedFormats, setWantedFormats] = useState<string[]>(['parquet']);
   const [creating, setCreating] = useState(false);
   const [notConfigured, setNotConfigured] = useState(false);
 
@@ -171,7 +197,12 @@ export default function SnapshotsPage() {
     if (!relationChosen) return;
     setCreating(true);
     try {
-      await snapshotsClient().postSnapshot({ schema: schema!, relation, srs: srs ?? undefined });
+      await snapshotsClient().postSnapshot({
+        schema: schema!,
+        relation,
+        srs: srs ?? undefined,
+        formats: wantedFormats.length ? wantedFormats : undefined,
+      });
       message.success('Snapshot queued');
       queryClient.invalidateQueries({ queryKey: ['snapshot-jobs'] });
     } catch (e) {
@@ -188,16 +219,13 @@ export default function SnapshotsPage() {
     }
   };
 
-  const handleDownload = async (snap: RelationSnapshot) => {
+  const handleDownloadFormat = async (snap: RelationSnapshot, format: SnapshotFormat) => {
     try {
-      const res = await snapshotsClient().getRelationSnapshotData(schema!, relation, snap.snapshot_date);
-      await saveResponse(res, `${schema}.${relation}-${snap.snapshot_date}.parquet`);
+      const res = await snapshotsClient().getRelationSnapshotDataFormat(schema!, relation, snap.snapshot_date, format);
+      const ext = FORMAT_EXT[format] ?? format;
+      await saveResponse(res, `${schema}.${relation}-${snap.snapshot_date}.${ext}`);
     } catch (e) {
-      if (apiErrorCode(e) === 'MULTI_FILE_SNAPSHOT') {
-        message.warning('This snapshot has several files — download them individually from the row details.');
-      } else {
-        message.error(getErrorMessage(e));
-      }
+      message.error(getErrorMessage(e));
     }
   };
 
@@ -282,6 +310,11 @@ export default function SnapshotsPage() {
             />
           ) : (
             <Space wrap>
+              <Checkbox.Group
+                options={KNOWN_FORMATS.map((f) => ({ label: f, value: f }))}
+                value={wantedFormats}
+                onChange={(v) => setWantedFormats(v as string[])}
+              />
               <InputNumber
                 placeholder="Target SRS (EPSG), optional"
                 style={{ width: 220 }}
@@ -339,6 +372,9 @@ export default function SnapshotsPage() {
                 render: (v: number | null) => v?.toLocaleString() ?? '—',
               },
               { title: 'SRS', dataIndex: 'srs', key: 'srs', render: (v: number | null) => v ?? 'native' },
+              { title: 'Formats', key: 'formats',
+                render: (_: unknown, j: SnapshotJob) => <FormatBadges formats={j.formats} />,
+              },
               { title: 'Created', dataIndex: 'created', key: 'created' },
               { title: 'Finished', dataIndex: 'finished', key: 'finished', render: (v: string | null) => v ?? '—' },
               { title: 'By', dataIndex: 'username', key: 'username' },
@@ -387,26 +423,45 @@ export default function SnapshotsPage() {
                   </Space>
                 ),
               },
+              { title: 'Formats', key: 'formats',
+                render: (_: unknown, snap: RelationSnapshot) => <FormatBadges formats={snap.formats} />,
+              },
               { title: 'Published', dataIndex: 'published', key: 'published' },
-              { title: 'Actions', key: 'actions', width: 260,
+              { title: 'Actions', key: 'actions', width: 280,
                 render: (_: unknown, snap: RelationSnapshot) => {
-                  const dataUrl = snapshotsClient().getRelationSnapshotDataUrl(schema!, relation, snap.snapshot_date);
+                  // Older snapshots carry no formats array — treat them as Parquet-only.
+                  const produced = producedFormats(snap);
+                  const effective = produced.length
+                    ? produced
+                    : [{ format: 'parquet', status: 'produced' } as SnapshotFormatResult];
+                  const urlOf = (f: SnapshotFormat) =>
+                    snapshotsClient().getRelationSnapshotDataFormatUrl(schema!, relation, snap.snapshot_date, f);
+                  const parquet = effective.find((f) => f.format === 'parquet');
+                  const linkFormat = (parquet ?? effective[0]).format;
                   return (
                     <Space>
-                      <Tooltip title="Download Parquet">
-                        <Button size="small" icon={<DownloadOutlined />} onClick={() => handleDownload(snap)} />
-                      </Tooltip>
-                      <Tooltip title="Copy data URL">
+                      {effective.map((f) => (
+                        <Tooltip key={f.format} title={`Download ${f.format}`}>
+                          <Button
+                            size="small"
+                            icon={<DownloadOutlined />}
+                            onClick={() => handleDownloadFormat(snap, f.format)}
+                          >
+                            {FORMAT_EXT[f.format] ?? f.format}
+                          </Button>
+                        </Tooltip>
+                      ))}
+                      <Tooltip title={`Copy ${linkFormat} URL`}>
                         <Button
                           size="small"
                           icon={<LinkOutlined />}
                           onClick={async () => {
-                            await navigator.clipboard.writeText(dataUrl);
+                            await navigator.clipboard.writeText(urlOf(linkFormat));
                             message.success('URL copied');
                           }}
                         />
                       </Tooltip>
-                      <DuckDbPopover dataUrl={dataUrl} />
+                      {parquet && <DuckDbPopover dataUrl={urlOf('parquet')} />}
                     </Space>
                   );
                 },
