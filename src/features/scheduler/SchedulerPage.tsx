@@ -88,6 +88,17 @@ export default function SchedulerPage() {
   const runs = runsQuery.data ?? [];
   const anyRunning = runs.some((r) => r.status === 'running');
 
+  // The list omits the (up to 1 MB) log — fetch the single run for the drawer
+  // and keep it fresh while the run is still going.
+  const runDetailQuery = useQuery({
+    queryKey: ['scheduler-run', detailRun?.uuid],
+    queryFn: async () => await schedulerClient().getSchedulerRun(detailRun!.uuid),
+    enabled: detailRun !== null,
+    refetchInterval: (q) => (q.state.data?.status === 'running' ? 3000 : false),
+  });
+  const shownRun = runDetailQuery.data ?? detailRun;
+  const runLog = (runDetailQuery.data as ({ log?: string | null } | undefined))?.log ?? null;
+
   if (!isSuperUser) {
     return <Alert type="info" showIcon message="The scheduler is available to the database super-user only." />;
   }
@@ -228,6 +239,17 @@ export default function SchedulerPage() {
           rowSelection={{
             selectedRowKeys: selectedJobIds,
             onChange: (keys) => setSelectedJobIds(keys as number[]),
+          }}
+          expandable={{
+            rowExpandable: (j: SchedulerJob) => j.report !== null,
+            expandedRowRender: (j: SchedulerJob) => (
+              <>
+                <Text strong>Last report</Text>
+                <pre style={{ fontSize: 12, maxHeight: 320, overflow: 'auto', margin: 0 }}>
+                  {JSON.stringify(j.report, null, 2)}
+                </pre>
+              </>
+            ),
           }}
           locale={{ emptyText: 'No scheduler jobs yet.' }}
           columns={[
@@ -405,27 +427,27 @@ export default function SchedulerPage() {
         onClose={() => setDetailRun(null)}
         width={560}
       >
-        {detailRun && (
+        {shownRun && (
           <Space direction="vertical" style={{ width: '100%' }}>
             <Descriptions size="small" column={2}>
-              <Descriptions.Item label="Job">{jobById.get(detailRun.job)?.name ?? `#${detailRun.job}`}</Descriptions.Item>
+              <Descriptions.Item label="Job">{jobById.get(shownRun.job)?.name ?? `#${shownRun.job}`}</Descriptions.Item>
               <Descriptions.Item label="Status">
-                <Tag color={RUN_STATUS_COLOR[detailRun.status]}>{detailRun.status}</Tag>
+                <Tag color={RUN_STATUS_COLOR[shownRun.status]}>{shownRun.status}</Tag>
               </Descriptions.Item>
-              <Descriptions.Item label="Started">{detailRun.started_at}</Descriptions.Item>
-              <Descriptions.Item label="Finished">{detailRun.finished_at ?? '—'}</Descriptions.Item>
-              <Descriptions.Item label="Heartbeat">{detailRun.heartbeat ?? '—'}</Descriptions.Item>
-              <Descriptions.Item label="Host / pid">{`${detailRun.host ?? '—'} / ${detailRun.pid}`}</Descriptions.Item>
-              <Descriptions.Item label="Started by" span={2}>{detailRun.name ?? '—'}</Descriptions.Item>
+              <Descriptions.Item label="Started">{shownRun.started_at}</Descriptions.Item>
+              <Descriptions.Item label="Finished">{shownRun.finished_at ?? '—'}</Descriptions.Item>
+              <Descriptions.Item label="Heartbeat">{shownRun.heartbeat ?? '—'}</Descriptions.Item>
+              <Descriptions.Item label="Host / pid">{`${shownRun.host ?? '—'} / ${shownRun.pid}`}</Descriptions.Item>
+              <Descriptions.Item label="Started by" span={2}>{shownRun.name ?? '—'}</Descriptions.Item>
             </Descriptions>
-            {detailRun.exit_reason && (
-              <Alert type={detailRun.status === 'failed' ? 'error' : 'info'} showIcon message={detailRun.exit_reason} />
+            {shownRun.exit_reason && (
+              <Alert type={shownRun.status === 'failed' ? 'error' : 'info'} showIcon message={shownRun.exit_reason} />
             )}
-            {jobById.get(detailRun.job)?.report && (
+            {runLog !== null && (
               <>
-                <Text strong>Last report for this job</Text>
-                <pre style={{ fontSize: 12, maxHeight: 320, overflow: 'auto', margin: 0 }}>
-                  {JSON.stringify(jobById.get(detailRun.job)!.report, null, 2)}
+                <Text strong>Log</Text>
+                <pre style={{ fontSize: 12, maxHeight: 360, overflow: 'auto', margin: 0, whiteSpace: 'pre-wrap' }}>
+                  {runLog}
                 </pre>
               </>
             )}
