@@ -254,7 +254,12 @@ export default function SchedulerPage() {
             },
             { title: 'Snapshot', dataIndex: 'snapshot', key: 'snapshot',
               sorter: (a: SchedulerJob, b: SchedulerJob) => Number(a.snapshot) - Number(b.snapshot),
-              render: (v: boolean) => (v ? <Tag color="blue">yes</Tag> : null),
+              render: (v: boolean, j: SchedulerJob) =>
+                v ? (
+                  <Tooltip title={`Formats: ${j.snapshot_formats?.join(', ') ?? 'server default'}`}>
+                    <Tag color="blue">{j.snapshot_formats?.join('+') ?? 'yes'}</Tag>
+                  </Tooltip>
+                ) : null,
             },
             { title: 'Last run', key: 'lastrun',
               // ok/failed first by status, then newest run; never-run rows sort last.

@@ -1,5 +1,5 @@
-import { Button, Drawer, Form, Input, InputNumber, Select, Space, Switch, Typography } from 'antd';
-import type { SchedulerJob, SchedulerJobInput } from '@centia-io/sdk';
+import { Button, Checkbox, Drawer, Form, Input, InputNumber, Select, Space, Switch, Typography } from 'antd';
+import type { SchedulerJob, SchedulerJobInput, SnapshotFormat } from '@centia-io/sdk';
 import { useEffect, useState } from 'react';
 
 const { Text } = Typography;
@@ -7,6 +7,8 @@ const { Text } = Typography;
 const GEOMETRY_TYPES = [
   'AUTO', 'POINT', 'LINESTRING', 'POLYGON', 'MULTIPOINT', 'MULTILINESTRING', 'MULTIPOLYGON', 'GEOMETRY',
 ];
+
+const SNAPSHOT_FORMATS: SnapshotFormat[] = ['parquet', 'flatgeobuf'];
 
 const CRON_PRESETS: { label: string; value: string }[] = [
   { label: 'Every hour', value: '0 * * * *' },
@@ -56,6 +58,7 @@ export default function JobFormDrawer({
   const [form] = Form.useForm();
   const [preset, setPreset] = useState<string | undefined>();
   const nameValue = Form.useWatch('name', form) as string | undefined;
+  const snapshotOn = Form.useWatch('snapshot', form) as boolean | undefined;
 
   useEffect(() => {
     if (!open) return;
@@ -77,7 +80,12 @@ export default function JobFormDrawer({
         <Button
           type="primary"
           loading={saving}
-          onClick={async () => onSave((await form.validateFields()) as SchedulerJobInput)}
+          onClick={async () => {
+            const values = (await form.validateFields()) as SchedulerJobInput;
+            // Empty selection means "server default" — the wire value is null, never [].
+            values.snapshot_formats = values.snapshot_formats?.length ? values.snapshot_formats : null;
+            onSave(values);
+          }}
         >
           Save
         </Button>
@@ -182,10 +190,19 @@ export default function JobFormDrawer({
             name="snapshot"
             label="Snapshot"
             valuePropName="checked"
-            tooltip="Queue a Parquet snapshot after each successful import (see Tools → Snapshots)."
+            tooltip="Queue a snapshot after each successful import (see Tools → Snapshots)."
           >
             <Switch />
           </Form.Item>
+          {snapshotOn && (
+            <Form.Item
+              name="snapshot_formats"
+              label="Snapshot formats"
+              tooltip="Formats for the queued snapshot. None selected = the server default."
+            >
+              <Checkbox.Group options={SNAPSHOT_FORMATS.map((f) => ({ label: f, value: f }))} />
+            </Form.Item>
+          )}
         </Space>
         <Form.Item name="presql" label="Pre-SQL" extra="Runs before the import.">
           <Input.TextArea rows={2} />
