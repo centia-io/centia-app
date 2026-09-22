@@ -97,7 +97,7 @@ export default function SchedulerPage() {
     refetchInterval: (q) => (q.state.data?.status === 'running' ? 3000 : false),
   });
   const shownRun = runDetailQuery.data ?? detailRun;
-  const runLog = (runDetailQuery.data as ({ log?: string | null } | undefined))?.log ?? null;
+  const runLog = runDetailQuery.data?.log ?? null;
 
   if (!isSuperUser) {
     return <Alert type="info" showIcon message="The scheduler is available to the database super-user only." />;
