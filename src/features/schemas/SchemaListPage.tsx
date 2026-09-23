@@ -35,7 +35,7 @@ export default function SchemaListPage() {
 
   const tableData = schemas.map((s) => ({
     name: s.name,
-    tableCount: s.table_count ?? 0,
+    tableCount: s._table_count ?? 0,
   }));
 
   const [saving, setSaving] = useState(false);
@@ -45,7 +45,7 @@ export default function SchemaListPage() {
     const values = await form.validateFields();
     setSaving(true);
     try {
-      schemaCollection.insert({ name: values.name, table_count: 0 });
+      schemaCollection.insert({ name: values.name, _table_count: 0 });
       message.success(`Schema "${values.name}" created`);
       form.resetFields();
       setCreateOpen(false);

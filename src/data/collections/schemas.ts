@@ -8,15 +8,15 @@ import { queryClient } from '../queryClient';
  */
 export interface SchemaItem {
   name: string;
-  /** Number of tables and views (what /schemas/{schema}/tables lists). */
-  table_count: number;
+  /** Number of tables, views and matviews (what /schemas/{schema}/tables lists). Read-only. */
+  _table_count?: number;
 }
 
 /**
  * Schema collection backed by SDK provisioning.schemas.getSchema().
  *
  * - namesOnly=true: one catalog query instead of building every table's
- *   full definition — the listing still carries table_count
+ *   full definition — the listing still carries _table_count
  * - `getKey` uses the schema name as the unique key
  * - `onInsert` / `onDelete` persist mutations via SDK
  * - Optimistic updates are applied instantly by TanStack DB

@@ -21,9 +21,12 @@ import { rollback } from '../../data/optimistic';
 
 type RelationType = 'TABLE' | 'VIEW' | 'MATERIALIZED VIEW' | 'FOREIGN TABLE';
 
-type SchemaDetailResponse = {
+/** Per-table summary from GET /schemas/{schema}/tables?namesOnly=true. */
+type TableSummary = {
   name: string;
-  tables?: Array<{ name: string; columns?: unknown[]; _type?: RelationType }>;
+  _type?: RelationType;
+  _events?: boolean;
+  _column_count?: number;
 };
 
 const RELATION_TYPE_META: Record<RelationType, { label: string; color: string }> = {
@@ -102,18 +105,21 @@ function TablesPanel({ schema }: { schema: string }) {
 
   const queryKey = ['schema-detail', schema] as const;
 
+  // namesOnly=true is one catalog query for the whole schema; a table's full
+  // definition is only fetched on its own page.
   const { data, isLoading, error } = useQuery({
     queryKey,
     queryFn: async () => {
-      return await getAdminClient().provisioning.schemas.getSchema(schema) as SchemaDetailResponse;
+      return await getAdminClient().provisioning.tables.getTable(schema, undefined, { namesOnly: true }) as
+        unknown as TableSummary[];
     },
     staleTime: 30_000,
   });
 
   const tables =
-    data?.tables?.map((t) => ({
+    data?.map((t) => ({
       name: t.name,
-      columnCount: t.columns?.length ?? 0,
+      columnCount: t._column_count ?? 0,
       relationType: (t._type ?? 'TABLE') as RelationType,
     })) ?? [];
 
@@ -302,10 +308,8 @@ function TablesPanel({ schema }: { schema: string }) {
         queryKey,
         previous: queryClient.getQueryData(queryKey),
       };
-      queryClient.setQueryData(queryKey, (old: SchemaDetailResponse | undefined) => {
-        if (!old) return old;
-        return { ...old, tables: (old.tables ?? []).filter((t) => t.name !== name) };
-      });
+      queryClient.setQueryData(queryKey, (old: TableSummary[] | undefined) =>
+        old?.filter((t) => t.name !== name));
       try {
         await getAdminClient().provisioning.tables.deleteTable(schema, name);
         message.success(`Table "${name}" deleted`);
