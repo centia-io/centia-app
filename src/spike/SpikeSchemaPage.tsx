@@ -29,7 +29,7 @@ export default function SpikeSchemaPage() {
       // If the server call fails, the optimistic state rolls back automatically.
       schemaCollection.insert({
         name: values.name,
-        tables: [],
+        table_count: 0,
       });
       message.success(`Schema "${values.name}" created (optimistic)`);
       form.resetFields();
@@ -53,7 +53,7 @@ export default function SpikeSchemaPage() {
 
   const tableData = schemas.map((s) => ({
     name: s.name,
-    tableCount: s.tables?.length ?? 0,
+    tableCount: s.table_count ?? 0,
   }));
 
   return (

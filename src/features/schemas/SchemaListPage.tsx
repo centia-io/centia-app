@@ -26,7 +26,7 @@ export default function SchemaListPage() {
   const { isLoading } = useQuery({
     queryKey: ['schemas'] as const,
     queryFn: async (): Promise<SchemaItem[]> => {
-      return await getAdminClient().provisioning.schemas.getSchema() as SchemaItem[];
+      return await getAdminClient().provisioning.schemas.getSchema(undefined, { namesOnly: true }) as SchemaItem[];
     },
     staleTime: 30_000,
   });
@@ -35,7 +35,7 @@ export default function SchemaListPage() {
 
   const tableData = schemas.map((s) => ({
     name: s.name,
-    tableCount: s.tables?.length ?? 0,
+    tableCount: s.table_count ?? 0,
   }));
 
   const [saving, setSaving] = useState(false);
@@ -45,7 +45,7 @@ export default function SchemaListPage() {
     const values = await form.validateFields();
     setSaving(true);
     try {
-      schemaCollection.insert({ name: values.name, tables: [] });
+      schemaCollection.insert({ name: values.name, table_count: 0 });
       message.success(`Schema "${values.name}" created`);
       form.resetFields();
       setCreateOpen(false);
