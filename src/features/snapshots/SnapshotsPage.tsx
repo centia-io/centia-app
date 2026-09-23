@@ -238,6 +238,13 @@ export default function SnapshotsPage() {
     }
   };
 
+  // Formats of the newest published snapshot — the ones the stable /latest URL can serve.
+  const latestFormats = useMemo<SnapshotFormat[]>(() => {
+    if (snaps.length === 0) return [];
+    const produced = producedFormats(snaps[0]);
+    return produced.length ? produced.map((f) => f.format) : ['parquet'];
+  }, [snaps]);
+
   /** "schema changed" when the fingerprint differs from the next-older snapshot. */
   const schemaChanged = useMemo(() => {
     const changed = new Set<string>();
@@ -383,7 +390,38 @@ export default function SnapshotsPage() {
         </Card>
       )}
 
-      <Card title="Published snapshots" size="small">
+      <Card
+        title="Published snapshots"
+        size="small"
+        extra={
+          relationChosen && latestFormats.length > 0 ? (
+            <Space size={4}>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                Latest URL:
+              </Text>
+              {latestFormats.map((f) => (
+                <Tooltip
+                  key={f}
+                  title={`Copy a stable URL that always resolves to the newest published ${f} snapshot — paste it into DuckDB or QGIS.`}
+                >
+                  <Button
+                    size="small"
+                    icon={<LinkOutlined />}
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(
+                        snapshotsClient().getRelationSnapshotDataFormatUrl(schema!, relation, 'latest', f),
+                      );
+                      message.success('Latest URL copied');
+                    }}
+                  >
+                    {f}
+                  </Button>
+                </Tooltip>
+              ))}
+            </Space>
+          ) : undefined
+        }
+      >
         {!relationChosen ? (
           <Text type="secondary">Select a schema and relation to list its snapshots.</Text>
         ) : snapsQuery.isLoading ? (
