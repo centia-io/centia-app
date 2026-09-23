@@ -9,7 +9,7 @@ import { queryClient } from '../queryClient';
 export interface SchemaItem {
   name: string;
   /** Number of tables and views (what /schemas/{schema}/tables lists). */
-  table_count?: number;
+  table_count: number;
 }
 
 /**
