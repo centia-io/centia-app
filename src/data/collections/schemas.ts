@@ -1,16 +1,10 @@
 import { createCollection } from '@tanstack/react-db';
 import { queryCollectionOptions } from '@tanstack/query-db-collection';
+import type { SchemaInfo } from '@centia-io/sdk';
 import { getAdminClient } from '../../baas/adminClient';
 import { queryClient } from '../queryClient';
 
-/**
- * Schema item as returned by the API with namesOnly=true.
- */
-export interface SchemaItem {
-  name: string;
-  /** Number of tables, views and matviews (what /schemas/{schema}/tables lists). Read-only. */
-  _table_count?: number;
-}
+export type SchemaItem = SchemaInfo;
 
 /**
  * Schema collection backed by SDK provisioning.schemas.getSchema().
@@ -26,7 +20,7 @@ export const schemaCollection = createCollection(
     queryKey: ['schemas'] as const,
     queryFn: async (): Promise<SchemaItem[]> => {
       const admin = getAdminClient();
-      return await admin.provisioning.schemas.getSchema(undefined, { namesOnly: true }) as SchemaItem[];
+      return await admin.provisioning.schemas.getSchema(undefined, { namesOnly: true });
     },
     select: (data) => data ?? [],
     queryClient,
