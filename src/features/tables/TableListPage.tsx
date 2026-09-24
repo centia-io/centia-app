@@ -11,8 +11,7 @@ import type { TableInfo } from '@centia-io/sdk';
 import { useMetaQuery, invalidateMeta } from '../../hooks/useMetaQuery';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
 import BulkPrivilegeModal from './BulkPrivilegeModal';
-import SchemaForm from '../../components/SchemaForm';
-import { testPropertiesSchema } from '../../data/testPropertiesSchema';
+import MetaPropertiesForm from '../../components/MetaPropertiesForm';
 import { confirmDelete } from '../../components/ConfirmDelete';
 import { useQuery } from '@tanstack/react-query';
 import { queryClient } from '../../data/queryClient';
@@ -515,7 +514,7 @@ function TablesPanel({ schema }: { schema: string }) {
           </Button>
         }
       >
-        <SchemaForm schema={testPropertiesSchema} form={propsForm} />
+        <MetaPropertiesForm form={propsForm} />
       </Drawer>
       <Drawer
         title={`Bulk Edit Metadata (${selectedRows.length} tables)`}
@@ -554,8 +553,7 @@ function TablesPanel({ schema }: { schema: string }) {
           <p style={{ marginBottom: 12, color: '#888', fontSize: 13 }}>
             Only checked property fields will be applied to the selected tables.
           </p>
-          <SchemaForm
-            schema={testPropertiesSchema}
+          <MetaPropertiesForm
             form={bulkPropsForm}
             enabledFields={bulkPropsEnabled}
             onEnabledChange={setBulkPropsEnabled}

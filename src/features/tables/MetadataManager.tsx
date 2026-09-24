@@ -4,8 +4,7 @@ import { message } from '../../utils/message';
 import { SaveOutlined } from '@ant-design/icons';
 import { getMeta } from '../../baas/client';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
-import SchemaForm from '../../components/SchemaForm';
-import { testPropertiesSchema } from '../../data/testPropertiesSchema';
+import MetaPropertiesForm from '../../components/MetaPropertiesForm';
 
 interface Props {
   schema: string;
@@ -60,7 +59,7 @@ export default function MetadataManager({ schema, table }: Props) {
 
   return (
     <div style={{ maxWidth: 720 }}>
-      <SchemaForm schema={testPropertiesSchema} form={form} />
+      <MetaPropertiesForm form={form} />
       <Button type="primary" icon={<SaveOutlined />} onClick={save} loading={saving} style={{ marginTop: 12 }}>
         Save Properties
       </Button>
