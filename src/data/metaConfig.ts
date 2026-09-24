@@ -1,18 +1,5 @@
+import type { MetaConfigFieldset } from '@centia-io/sdk';
 import type { JSONSchema, PropertySchema } from '../components/SchemaForm';
-
-/** GC2's metaConfig: the relation properties form, as fieldsets of fields. */
-export interface MetaConfigField {
-  name: string;
-  type: 'text' | 'textarea' | 'checkbox' | 'combo' | 'checkboxgroup' | (string & {});
-  title: string;
-  values?: { name: string; value: string }[];
-  default?: unknown;
-}
-
-export interface MetaConfigFieldset {
-  fieldsetName: string;
-  fields: MetaConfigField[];
-}
 
 /**
  * Convert metaConfig to the SchemaForm schema. Fieldsets become `group`,
