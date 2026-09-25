@@ -43,6 +43,7 @@ export default function JobFormDrawer({
   open,
   job,
   schemas,
+  supportsSortby,
   saving,
   onSave,
   onClose,
@@ -51,6 +52,8 @@ export default function JobFormDrawer({
   /** null = create. */
   job: SchedulerJob | null;
   schemas: string[];
+  /** Whether the server knows use_sortby; older servers reject it as an unknown field. */
+  supportsSortby: boolean;
   saving: boolean;
   onSave: (values: SchedulerJobInput) => void;
   onClose: () => void;
@@ -84,6 +87,7 @@ export default function JobFormDrawer({
             const values = (await form.validateFields()) as SchedulerJobInput;
             // Empty selection means "server default" — the wire value is null, never [].
             values.snapshot_formats = values.snapshot_formats?.length ? values.snapshot_formats : null;
+            if (!supportsSortby) delete (values as { use_sortby?: boolean }).use_sortby;
             onSave(values);
           }}
         >
@@ -102,6 +106,7 @@ export default function JobFormDrawer({
           download_schema: true,
           active: true,
           snapshot: false,
+          use_sortby: true,
         }}
       >
         <Form.Item
@@ -183,6 +188,16 @@ export default function JobFormDrawer({
           >
             <Switch />
           </Form.Item>
+          {supportsSortby && (
+            <Form.Item
+              name="use_sortby"
+              label="Sort pages (sortBy)"
+              valuePropName="checked"
+              tooltip="Paged WFS 2.0.0 imports add a sortBy so pages neither overlap nor skip rows. Turn off for servers that reject sortBy. Has no effect on other sources."
+            >
+              <Switch />
+            </Form.Item>
+          )}
           <Form.Item name="active" label="Active" valuePropName="checked">
             <Switch />
           </Form.Item>

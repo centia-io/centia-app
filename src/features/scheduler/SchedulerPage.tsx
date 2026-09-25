@@ -62,6 +62,8 @@ export default function SchedulerPage() {
     staleTime: 10_000,
   });
   const jobs = jobsQuery.data ?? [];
+  // Servers without use_sortby reject it as an unknown field, so only offer it where jobs carry it.
+  const supportsSortby = jobs.some((j) => 'use_sortby' in j);
   const jobById = new Map(jobs.map((j) => [j.id, j]));
   // Legacy rows can carry null name/url despite the declared types — stay null-safe.
   const visibleJobs = jobSearch
@@ -413,6 +415,7 @@ export default function SchedulerPage() {
         open={formOpen}
         job={editJob}
         schemas={schemas}
+        supportsSortby={supportsSortby}
         saving={saving}
         onSave={handleSave}
         onClose={() => {
