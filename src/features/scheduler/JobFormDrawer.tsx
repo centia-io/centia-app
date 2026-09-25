@@ -87,7 +87,7 @@ export default function JobFormDrawer({
             const values = (await form.validateFields()) as SchedulerJobInput;
             // Empty selection means "server default" — the wire value is null, never [].
             values.snapshot_formats = values.snapshot_formats?.length ? values.snapshot_formats : null;
-            if (!supportsSortby) delete (values as { use_sortby?: boolean }).use_sortby;
+            if (!supportsSortby) delete values.use_sortby;
             onSave(values);
           }}
         >
