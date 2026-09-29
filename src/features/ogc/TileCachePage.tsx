@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Alert, Card, Select, Space, Typography } from 'antd';
-import { useQuery } from '@tanstack/react-query';
 import { Mapcache } from '@centia-io/sdk';
 import { getAdminClient } from '../../baas/adminClient';
 import { useAuth } from '../../auth/AuthProvider';
-import { extractGeoTables } from '../map/geoTables';
+import { useGeoTables } from '../map/geoTables';
+import { useSchemaNames } from '../../hooks/useSchemaNames';
 import UrlField from './UrlField';
 
 const { Text } = Typography;
@@ -22,18 +22,11 @@ export default function TileCachePage() {
   const [table, setTable] = useState<string | null>(null);
   const [grid, setGrid] = useState('g20');
 
-  const { data: geoTables = [], isLoading } = useQuery({
-    queryKey: ['schemas'],
-    queryFn: async () => (await getAdminClient().provisioning.schemas.getSchema()) as any[],
-    staleTime: 30_000,
-    select: extractGeoTables,
-  });
+  const { data: schemaNames = [], isLoading } = useSchemaNames();
+  const { geoTables, isLoading: tablesLoading } = useGeoTables(schema);
 
-  const schemas = [...new Set(geoTables.map((gt) => gt.schema))].sort();
-  const tables = geoTables
-    .filter((gt) => gt.schema === schema)
-    .map((gt) => gt.table)
-    .sort();
+  const schemas = schemaNames.map((s) => s.name).sort();
+  const tables = geoTables.map((gt) => gt.table);
 
   const mc = new Mapcache(getAdminClient().http);
   const db = database || '{database}';
@@ -65,6 +58,7 @@ export default function TileCachePage() {
           placeholder="Select table"
           style={{ width: 260 }}
           showSearch
+          loading={tablesLoading}
           disabled={!schema}
           value={table}
           onChange={setTable}

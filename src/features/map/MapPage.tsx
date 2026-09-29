@@ -22,7 +22,8 @@ import {
 } from './mapStore';
 import { computeWmsViewport, fetchWmsImage, wmsLayerName } from './wmsImage';
 import LayerStyleDrawer from './LayerStyleDrawer';
-import { extractGeoTables } from './geoTables';
+import { useGeoTables } from './geoTables';
+import { useSchemaNames } from '../../hooks/useSchemaNames';
 import { clearAgentPageContext, setAgentPageContext } from '../../agent/agentContext';
 
 const { Text } = Typography;
@@ -105,12 +106,10 @@ export default function MapPage() {
   const { user } = useAuth();
   const database = (user?.database as string) ?? '';
 
-  const { data: geoTables = [], isLoading: loading, error } = useQuery({
-    queryKey: ['schemas'],
-    queryFn: async () => await getAdminClient().provisioning.schemas.getSchema() as any[],
-    staleTime: 30_000,
-    select: extractGeoTables,
-  });
+  const { data: schemaNames = [], isLoading: schemasLoading, error: schemasError } = useSchemaNames();
+  const { geoTables: visibleTables, isLoading: tablesLoading, error: tablesError } = useGeoTables(selectedSchema);
+  const loading = schemasLoading || tablesLoading;
+  const error = schemasError ?? tablesError;
 
   const addLayer = useCallback(async (gt: GeoTable, opts: { fit?: boolean } = {}) => {
     const map = mapRef.current;
@@ -611,10 +610,7 @@ export default function MapPage() {
     }
   }, []);
 
-  const schemas = [...new Set(geoTables.map((gt) => gt.schema))];
-  const visibleTables = selectedSchema
-    ? geoTables.filter((gt) => gt.schema === selectedSchema)
-    : [];
+  const schemas = schemaNames.map((s) => s.name).sort();
 
   const isActive = (gt: GeoTable) =>
     activeLayers.some((x) => x.schema === gt.schema && x.table === gt.table);
@@ -643,17 +639,13 @@ export default function MapPage() {
 
         {error && <Alert type="error" message={String(error)} style={{ margin: '0 12px' }} />}
 
-        {!loading && geoTables.length === 0 && !error && (
-          <Text type="secondary" style={{ padding: '0 16px' }}>
-            No tables with geometry columns found.
-          </Text>
-        )}
 
         {schemas.length > 0 && (
           <>
             <div style={{ display: 'flex', gap: 8, padding: '0 16px 12px' }}>
               <Select
                 placeholder="Select schema"
+                showSearch
                 value={selectedSchema}
                 onChange={handleSchemaChange}
                 style={{ flex: 1 }}
@@ -669,6 +661,9 @@ export default function MapPage() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '0 16px' }}>
+              {selectedSchema && !tablesLoading && !tablesError && visibleTables.length === 0 && (
+                <Text type="secondary">No tables with geometry columns in this schema.</Text>
+              )}
               {visibleTables.map((gt) => {
                 const sid = sourceId(gt);
                 const al = activeLayers.find((x) => x.schema === gt.schema && x.table === gt.table);
