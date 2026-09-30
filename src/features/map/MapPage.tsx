@@ -5,7 +5,7 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
 import { message } from '../../utils/message';
-import { Mapcache } from '@centia-io/sdk';
+import { Mapcache, isCentiaApiError } from '@centia-io/sdk';
 import { useAuth } from '../../auth/AuthProvider';
 import { getSql, getStatus } from '../../baas/client';
 import { useQuery } from '@tanstack/react-query';
@@ -568,13 +568,21 @@ export default function MapPage() {
     if (clearScope === 'viewport' && map) {
       opts.bbox = computeWmsViewport(map).bbox.join(',');
     }
+    // A full delete on an sqlite/bdb backend wipes synchronously and answers
+    // 200, but the SDK only accepts 202 and throws on the 200 success.
+    const del = async (tileset: string): Promise<'deleted' | 'started'> => {
+      try {
+        await mc.deleteMapcacheTileset(database, tileset, opts);
+        return 'started';
+      } catch (e) {
+        if (isCentiaApiError(e) && e.status === 200) return 'deleted';
+        throw e;
+      }
+    };
     setClearing(true);
     try {
-      await Promise.all([
-        mc.deleteMapcacheTileset(database, `${gt.schema}.${gt.table}`, opts),
-        mc.deleteMapcacheTileset(database, `${gt.schema}.${gt.table}.mvt`, opts),
-      ]);
-      message.success('Tile cache clearing started');
+      const outcomes = await Promise.all([del(`${gt.schema}.${gt.table}`), del(`${gt.schema}.${gt.table}.mvt`)]);
+      message.success(outcomes.every((o) => o === 'deleted') ? 'Tile cache deleted' : 'Tile cache clearing started');
       setClearCacheTarget(null);
     } catch (e) {
       message.error(getErrorMessage(e));
