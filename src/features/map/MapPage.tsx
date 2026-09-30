@@ -754,8 +754,8 @@ export default function MapPage() {
       >
         <Space direction="vertical" size="middle">
           <Text type="secondary">
-            Cached tiles (both image and vector) are deleted on the server in a background job
-            and regenerated on demand.
+            Cached tiles (both image and vector) are deleted on the server — immediately or in a
+            background job, depending on the cache backend — and regenerated on demand.
           </Text>
           <Radio.Group value={clearScope} onChange={(e) => setClearScope(e.target.value)}>
             <Space direction="vertical">
