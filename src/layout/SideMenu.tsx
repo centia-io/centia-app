@@ -31,6 +31,9 @@ const items = [
   { type: 'group' as const, label: 'Schema', children: [
     { key: '/schemas', icon: <DatabaseOutlined />, label: 'Schemas' },
   ]},
+  { type: 'group' as const, label: 'Visualization', children: [
+    { key: '/map', icon: <EnvironmentOutlined />, label: 'Map' },
+  ]},
   { type: 'group' as const, label: 'Data', children: [
     { key: '/sql', icon: <CodeOutlined />, label: 'SQL Console' },
     { key: '/graphql', icon: <ApiOutlined />, label: 'GraphQL Explorer' },
@@ -47,9 +50,6 @@ const items = [
     { key: '/users', icon: <UserOutlined />, label: 'Users' },
     { key: '/clients', icon: <KeyOutlined />, label: 'OAuth Clients' },
     { key: '/rules', icon: <SafetyOutlined />, label: 'Rules' },
-  ]},
-  { type: 'group' as const, label: 'Visualization', children: [
-    { key: '/map', icon: <EnvironmentOutlined />, label: 'Map' },
   ]},
   { type: 'group' as const, label: 'Tools', children: [
     { key: '/snapshots', icon: <CameraOutlined />, label: 'Snapshots' },
