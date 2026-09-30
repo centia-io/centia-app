@@ -5,7 +5,7 @@ import { getSql } from '../../baas/client';
 import { useQueries } from '@tanstack/react-query';
 import type { SchemaInfo } from '@centia-io/sdk';
 import { getAdminClient } from '../../baas/adminClient';
-import { useSchemaNames } from '../../hooks/useSchemaNames';
+import { useSchemaNames, tableSummaryKey, fetchTableSummary } from '../../hooks/useSchemaNames';
 import { sql as sqlLang, PostgreSQL, type SQLNamespace } from '@codemirror/lang-sql';
 import { sqlStore, useSqlStore } from './sqlStore';
 
@@ -31,28 +31,44 @@ export default function SqlConsolePage() {
   const { data: schemasData, isLoading: schemasLoading, error: schemasError } = useSchemaNames();
   const schemas: string[] = (schemasData?.map((s) => s.name) ?? []).sort();
 
-  // One cached query per selected schema, fetched in parallel: changing the
-  // selection only fetches the newly added schemas.
-  const schemaDetails = useQueries({
+  // Column names per selected schema from the shared table summaries (one
+  // catalog query each, in parallel). Servers without _columns fall back to
+  // the full schema definition for that schema only.
+  const summaries = useQueries({
     queries: selectedSchemas.map((s) => ({
+      queryKey: tableSummaryKey(s),
+      queryFn: async () => await fetchTableSummary(s),
+      staleTime: 30_000,
+    })),
+  });
+  const needsFull = selectedSchemas.map((_, i) => {
+    const data = summaries[i]?.data;
+    return data !== undefined && !data.every((t) => '_columns' in t);
+  });
+  const fullDetails = useQueries({
+    queries: selectedSchemas.map((s, i) => ({
       queryKey: ['sql-autocomplete', s],
       queryFn: async () => (await getAdminClient().provisioning.schemas.getSchema(s)) as SchemaInfo,
+      enabled: needsFull[i],
       staleTime: 5 * 60_000,
     })),
   });
-  const detailsKey = schemaDetails.map((q) => q.dataUpdatedAt).join(',');
+  const resultsKey = [...summaries, ...fullDetails].map((q) => q.dataUpdatedAt).join(',');
   const sqlSchema = useMemo<SQLNamespace>(() => {
     const ns: SQLNamespace = {};
     selectedSchemas.forEach((s, i) => {
-      for (const t of schemaDetails[i]?.data?.tables ?? []) {
+      const tables: { name: string; columns: string[] }[] = needsFull[i]
+        ? (fullDetails[i]?.data?.tables ?? []).map((t) => ({ name: t.name, columns: (t.columns ?? []).map((c) => c.name) }))
+        : (summaries[i]?.data ?? []).map((t) => ({ name: t.name, columns: t._columns ?? [] }));
+      for (const t of tables) {
         const qualifiedName = `${s}.${t.name}`;
-        ns[qualifiedName] = (t.columns ?? []).map((c) => c.name);
+        ns[qualifiedName] = t.columns;
         // Also add unqualified name for convenience
         if (!ns[t.name]) ns[t.name] = ns[qualifiedName];
       }
     });
     return ns;
-  }, [selectedSchemas, detailsKey]);
+  }, [selectedSchemas, resultsKey]);
 
   const sqlExtensions = useMemo(
     () => [sqlLang({
