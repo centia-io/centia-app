@@ -14,6 +14,7 @@ import { useAuth } from '../../auth/AuthProvider';
 import { confirmDelete } from '../../components/ConfirmDelete';
 import { queryClient } from '../../data/queryClient';
 import JobFormDrawer from './JobFormDrawer';
+import { useSchemaNames } from '../../hooks/useSchemaNames';
 
 const { Text } = Typography;
 
@@ -47,13 +48,7 @@ export default function SchedulerPage() {
   /** Keep the runs panel polling for a while after a manual start (the run may not exist yet). */
   const [pollUntil, setPollUntil] = useState(0);
 
-  const { data: schemas = [] } = useQuery({
-    queryKey: ['schema-names'],
-    queryFn: async () =>
-      (await getAdminClient().provisioning.schemas.getSchema(undefined, { namesOnly: true })).map((s) => s.name),
-    staleTime: 30_000,
-    enabled: isSuperUser,
-  });
+  const schemas = useSchemaNames().data?.map((s) => s.name) ?? [];
 
   const jobsQuery = useQuery({
     queryKey: ['scheduler-jobs'],

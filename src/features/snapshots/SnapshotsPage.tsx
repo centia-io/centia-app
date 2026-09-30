@@ -14,6 +14,7 @@ import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
 import { getStatus } from '../../baas/client';
 import { useAuth } from '../../auth/AuthProvider';
 import { queryClient } from '../../data/queryClient';
+import { useSchemaNames, useTableSummary } from '../../hooks/useSchemaNames';
 
 const { Text, Paragraph } = Typography;
 
@@ -131,21 +132,8 @@ export default function SnapshotsPage() {
   const [creating, setCreating] = useState(false);
   const [notConfigured, setNotConfigured] = useState(false);
 
-  const { data: schemas = [] } = useQuery({
-    queryKey: ['schema-names'],
-    queryFn: async () =>
-      (await getAdminClient().provisioning.schemas.getSchema(undefined, { namesOnly: true })).map((s) => s.name),
-    staleTime: 30_000,
-  });
-
-  const { data: relationNames = [] } = useQuery({
-    queryKey: ['table-names', schema],
-    queryFn: async () =>
-      ((await getAdminClient().provisioning.tables.getTable(schema!, undefined, { namesOnly: true })) as unknown as
-        { name: string }[]).map((t) => t.name),
-    enabled: !!schema,
-    staleTime: 30_000,
-  });
+  const schemas = useSchemaNames().data?.map((s) => s.name) ?? [];
+  const relationNames = useTableSummary(schema).data?.map((t) => t.name) ?? [];
 
   const relationValid = RELATION_NAME.test(relation);
   const relationChosen = !!schema && relationValid;

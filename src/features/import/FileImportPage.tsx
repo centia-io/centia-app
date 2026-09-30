@@ -3,7 +3,8 @@ import { Upload, Button, Form, Input, Select, Switch, Space, Steps, Card, Alert,
 import { message } from '../../utils/message';
 import { UploadOutlined, CloudUploadOutlined } from '@ant-design/icons';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
-import { useSchemaNames } from '../../hooks/useSchemaNames';
+import { useSchemaNames, tableSummaryKey, SCHEMAS_KEY } from '../../hooks/useSchemaNames';
+import { queryClient } from '../../data/queryClient';
 import type { UploadFile } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { FileProcessResponse } from '@centia-io/sdk';
@@ -107,6 +108,8 @@ export default function FileImportPage() {
       setImportResult(data);
       setStep(3);
       message.success('Import completed');
+      queryClient.invalidateQueries({ queryKey: tableSummaryKey(values.schema) });
+      queryClient.invalidateQueries({ queryKey: SCHEMAS_KEY });
     } catch (e: unknown) {
       setError(getErrorMessage(e));
     } finally {

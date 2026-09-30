@@ -9,6 +9,7 @@ import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } 
 import { CSS } from '@dnd-kit/utilities';
 import type { TableInfo } from '@centia-io/sdk';
 import { useMetaQuery, invalidateMeta } from '../../hooks/useMetaQuery';
+import { useTableSummary, tableSummaryKey, SCHEMAS_KEY } from '../../hooks/useSchemaNames';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
 import BulkPrivilegeModal from './BulkPrivilegeModal';
 import MetaPropertiesForm from '../../components/MetaPropertiesForm';
@@ -96,17 +97,10 @@ function TablesPanel({ schema }: { schema: string }) {
   const [renameForm] = Form.useForm();
   const [savingRename, setSavingRename] = useState(false);
 
-  const queryKey = ['schema-detail', schema] as const;
+  const queryKey = tableSummaryKey(schema);
 
-  // namesOnly=true is one catalog query for the whole schema; a table's full
-  // definition is only fetched on its own page.
-  const { data, isLoading, error } = useQuery({
-    queryKey,
-    queryFn: async () => {
-      return await getAdminClient().provisioning.tables.getTable(schema, undefined, { namesOnly: true });
-    },
-    staleTime: 30_000,
-  });
+  // A table's full definition is only fetched on its own page.
+  const { data, isLoading, error } = useTableSummary(schema);
 
   const tables =
     data?.map((t) => ({
@@ -284,7 +278,7 @@ function TablesPanel({ schema }: { schema: string }) {
       await getAdminClient().provisioning.tables.postTable(schema, { name: values.name });
       message.success(`Table "${values.name}" created`);
       queryClient.invalidateQueries({ queryKey });
-      queryClient.invalidateQueries({ queryKey: ['schemas'] });
+      queryClient.invalidateQueries({ queryKey: SCHEMAS_KEY });
       form.resetFields();
       setCreateOpen(false);
     } catch (e: unknown) {
@@ -306,7 +300,7 @@ function TablesPanel({ schema }: { schema: string }) {
         await getAdminClient().provisioning.tables.deleteTable(schema, name);
         message.success(`Table "${name}" deleted`);
         queryClient.invalidateQueries({ queryKey });
-        queryClient.invalidateQueries({ queryKey: ['schemas'] });
+        queryClient.invalidateQueries({ queryKey: SCHEMAS_KEY });
       } catch (e: unknown) {
         rollback(ctx);
         message.error(getErrorMessage(e));
@@ -322,7 +316,7 @@ function TablesPanel({ schema }: { schema: string }) {
       await getAdminClient().provisioning.tables.patchTable(schema, renameTable, { name: newName });
       message.success(`Table renamed to "${newName}"`);
       queryClient.invalidateQueries({ queryKey });
-      queryClient.invalidateQueries({ queryKey: ['schemas'] });
+      queryClient.invalidateQueries({ queryKey: SCHEMAS_KEY });
       await invalidateMeta(schema);
       setRenameTable(null);
     } catch (e: unknown) {

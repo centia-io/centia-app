@@ -1,11 +1,7 @@
 import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import type { TableInfo } from '@centia-io/sdk';
-import { getAdminClient } from '../../baas/adminClient';
+import { useTableSummary } from '../../hooks/useSchemaNames';
 import { useMetaQuery } from '../../hooks/useMetaQuery';
 import type { GeoTable } from './mapStore';
-
-type TableSummary = TableInfo & { _geometry_columns?: { name: string; type: string; srid: number }[] };
 
 /** GC2 marks relations without a PostGIS geometry column with this placeholder. */
 const NON_POSTGIS = 'gc2_non_postgis';
@@ -16,14 +12,7 @@ const NON_POSTGIS = 'gc2_non_postgis';
  * _geometry_columns fall back to the slower relation metadata.
  */
 export function useGeoTables(schema: string | null | undefined) {
-  // Same key and call as the schema's table list, so the two share a cache entry.
-  const summary = useQuery({
-    queryKey: ['schema-detail', schema],
-    queryFn: async () =>
-      (await getAdminClient().provisioning.tables.getTable(schema!, undefined, { namesOnly: true })) as TableSummary[],
-    enabled: !!schema,
-    staleTime: 30_000,
-  });
+  const summary = useTableSummary(schema);
   const hasGeomInfo = summary.data !== undefined && summary.data.every((t) => '_geometry_columns' in t);
   const fallback = summary.data !== undefined && !hasGeomInfo;
   const meta = useMetaQuery(schema ?? '', !!schema && fallback);

@@ -1,9 +1,9 @@
 // src/features/realtime/EnableEvents.tsx
 import { useState } from 'react';
 import { Select, Switch, List, Spin, App } from 'antd';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useSchemaNames } from '../../hooks/useSchemaNames';
-import { getEventsStatus, setEventsEnabled } from './eventsApi';
+import { useQueryClient } from '@tanstack/react-query';
+import { useSchemaNames, useTableSummary, tableSummaryKey } from '../../hooks/useSchemaNames';
+import { eventStatuses, setEventsEnabled } from './eventsApi';
 import { optimisticUpdate, rollback } from '../../data/optimistic';
 
 export default function EnableEvents() {
@@ -15,15 +15,12 @@ export default function EnableEvents() {
   const { data: schemasData, isLoading: schemasLoading } = useSchemaNames();
   const schemas: string[] = (schemasData?.map((s) => s.name) ?? []).sort();
 
-  const { data: tableStatuses, isLoading: tablesLoading } = useQuery({
-    queryKey: ['events-status', schema],
-    queryFn: () => getEventsStatus(schema!),
-    enabled: !!schema,
-  });
+  const { data: tables, isLoading: tablesLoading } = useTableSummary(schema);
+  const tableStatuses = tables ? eventStatuses(tables) : undefined;
 
   const handleToggle = async (table: string, enabled: boolean) => {
-    const queryKey = ['events-status', schema];
-    const ctx = optimisticUpdate(queryKey, 'table', table, { enabled });
+    const queryKey = tableSummaryKey(schema);
+    const ctx = optimisticUpdate(queryKey, 'name', table, { _events: enabled });
     setTogglingTable(table);
     try {
       await setEventsEnabled(schema!, table, enabled);

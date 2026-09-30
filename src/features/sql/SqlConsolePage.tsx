@@ -1,7 +1,9 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Button, Select, Space, Spin, Alert, Typography } from 'antd';
 import { PlayCircleOutlined } from '@ant-design/icons';
 import { getSql } from '../../baas/client';
+import { useQueries } from '@tanstack/react-query';
+import type { SchemaInfo } from '@centia-io/sdk';
 import { getAdminClient } from '../../baas/adminClient';
 import { useSchemaNames } from '../../hooks/useSchemaNames';
 import { sql as sqlLang, PostgreSQL, type SQLNamespace } from '@codemirror/lang-sql';
@@ -25,32 +27,32 @@ import ResultTable from '../../components/ResultTable';
 
 export default function SqlConsolePage() {
   const { query, format, selectedSchemas, result, rawResult, error, loading } = useSqlStore();
-  const [sqlSchema, setSqlSchema] = useState<SQLNamespace>({});
 
   const { data: schemasData, isLoading: schemasLoading, error: schemasError } = useSchemaNames();
   const schemas: string[] = (schemasData?.map((s) => s.name) ?? []).sort();
 
-  useEffect(() => {
-    if (selectedSchemas.length === 0) { setSqlSchema({}); return; }
-    let cancelled = false;
-    (async () => {
-      const ns: SQLNamespace = {};
-      for (const s of selectedSchemas) {
-        try {
-          const detail = await getAdminClient().provisioning.schemas.getSchema(s) as any;
-          const tables = detail?.tables ?? [];
-          for (const t of tables) {
-            const qualifiedName = `${s}.${t.name}`;
-            ns[qualifiedName] = (t.columns ?? []).map((c: any) => c.name);
-            // Also add unqualified name for convenience
-            if (!ns[t.name]) ns[t.name] = ns[qualifiedName];
-          }
-        } catch { /* skip failed schema */ }
+  // One cached query per selected schema, fetched in parallel: changing the
+  // selection only fetches the newly added schemas.
+  const schemaDetails = useQueries({
+    queries: selectedSchemas.map((s) => ({
+      queryKey: ['sql-autocomplete', s],
+      queryFn: async () => (await getAdminClient().provisioning.schemas.getSchema(s)) as SchemaInfo,
+      staleTime: 5 * 60_000,
+    })),
+  });
+  const detailsKey = schemaDetails.map((q) => q.dataUpdatedAt).join(',');
+  const sqlSchema = useMemo<SQLNamespace>(() => {
+    const ns: SQLNamespace = {};
+    selectedSchemas.forEach((s, i) => {
+      for (const t of schemaDetails[i]?.data?.tables ?? []) {
+        const qualifiedName = `${s}.${t.name}`;
+        ns[qualifiedName] = (t.columns ?? []).map((c) => c.name);
+        // Also add unqualified name for convenience
+        if (!ns[t.name]) ns[t.name] = ns[qualifiedName];
       }
-      if (!cancelled) setSqlSchema(ns);
-    })();
-    return () => { cancelled = true; };
-  }, [selectedSchemas]);
+    });
+    return ns;
+  }, [selectedSchemas, detailsKey]);
 
   const sqlExtensions = useMemo(
     () => [sqlLang({

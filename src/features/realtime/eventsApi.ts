@@ -5,7 +5,7 @@
 // Source: MCP tool postEvents (requires schema + table)
 
 import { getStatus } from '../../baas/client';
-import { getAdminClient } from '../../baas/adminClient';
+import type { TableSummary } from '../../hooks/useSchemaNames';
 
 const host = () => import.meta.env.VITE_CENTIA_HOST;
 const token = () => getStatus().getTokens().accessToken;
@@ -15,9 +15,9 @@ export interface TableEventStatus {
   enabled: boolean;
 }
 
-export async function getEventsStatus(schema: string): Promise<TableEventStatus[]> {
-  const res = await getAdminClient().provisioning.tables.getTable(schema, undefined, { namesOnly: true }) as any[];
-  return res
+/** Event status per table, from a schema's table summary (views can't have events). */
+export function eventStatuses(tables: TableSummary[] | undefined): TableEventStatus[] {
+  return (tables ?? [])
     .filter((t) => t._type === 'TABLE')
     .map((t) => ({ table: t.name, enabled: !!t._events }))
     .sort((a, b) => a.table.localeCompare(b.table));

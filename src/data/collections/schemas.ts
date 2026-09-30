@@ -2,6 +2,7 @@ import { createCollection } from '@tanstack/react-db';
 import { queryCollectionOptions } from '@tanstack/query-db-collection';
 import type { SchemaInfo } from '@centia-io/sdk';
 import { getAdminClient } from '../../baas/adminClient';
+import { SCHEMAS_KEY } from '../../hooks/useSchemaNames';
 import { queryClient } from '../queryClient';
 
 export type SchemaItem = SchemaInfo;
@@ -17,7 +18,7 @@ export type SchemaItem = SchemaInfo;
  */
 export const schemaCollection = createCollection(
   queryCollectionOptions({
-    queryKey: ['schemas'] as const,
+    queryKey: SCHEMAS_KEY,
     queryFn: async (): Promise<SchemaItem[]> => {
       const admin = getAdminClient();
       return await admin.provisioning.schemas.getSchema(undefined, { namesOnly: true });

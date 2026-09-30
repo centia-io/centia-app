@@ -8,6 +8,7 @@ import { confirmDelete } from '../../components/ConfirmDelete';
 import { useQuery } from '@tanstack/react-query';
 import { queryClient } from '../../data/queryClient';
 import { optimisticInsert, optimisticDelete, rollback } from '../../data/optimistic';
+import { useSchemaNames } from '../../hooks/useSchemaNames';
 
 export default function SequenceListPage() {
   const [schema, setSchema] = useState<string>('');
@@ -16,15 +17,9 @@ export default function SequenceListPage() {
   const [search, setSearch] = useState('');
   const [form] = Form.useForm();
 
-  const { data: schemaData, isLoading: schemasLoading } = useQuery({
-    queryKey: ['schemas-names'],
-    queryFn: async () => {
-      return await getAdminClient().provisioning.schemas.getSchema(undefined, { namesOnly: true });
-    },
-    staleTime: 30_000,
-  });
+  const { data: schemaData, isLoading: schemasLoading } = useSchemaNames();
 
-  const schemas: string[] = (schemaData as any[])?.map((s) => s.name) ?? [];
+  const schemas: string[] = schemaData?.map((s) => s.name) ?? [];
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['sequences', schema],

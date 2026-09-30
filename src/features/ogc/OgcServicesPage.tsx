@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { Alert, Card, Select, Space, Typography } from 'antd';
-import { useQuery } from '@tanstack/react-query';
-import { getAdminClient } from '../../baas/adminClient';
 import { useAuth } from '../../auth/AuthProvider';
 import UrlField from './UrlField';
 import OgcApiCard from './OgcApiCard';
+import { useSchemaNames } from '../../hooks/useSchemaNames';
 
 const { Text } = Typography;
 
@@ -18,14 +17,8 @@ export default function OgcServicesPage() {
   const [schema, setSchema] = useState<string | null>(null);
   const [srs, setSrs] = useState<string | null>(null);
 
-  const { data: schemas = [], isLoading } = useQuery({
-    queryKey: ['schema-names'],
-    queryFn: async () =>
-      (await getAdminClient().provisioning.schemas.getSchema(undefined, { namesOnly: true })).map(
-        (s) => s.name,
-      ),
-    staleTime: 30_000,
-  });
+  const { data: schemaData, isLoading } = useSchemaNames();
+  const schemas = schemaData?.map((s) => s.name) ?? [];
 
   const s = schema ? encodeURIComponent(schema) : '{schema}';
   const db = database ? encodeURIComponent(database) : '{database}';

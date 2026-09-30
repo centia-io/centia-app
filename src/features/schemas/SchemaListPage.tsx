@@ -7,7 +7,7 @@ import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
 import { confirmDelete } from '../../components/ConfirmDelete';
 import { schemaCollection, type SchemaItem } from '../../data/collections/schemas';
 import { useLiveQuery } from '@tanstack/react-db';
-import { useQuery } from '@tanstack/react-query';
+import { useSchemaNames, SCHEMAS_KEY, tableSummaryKey } from '../../hooks/useSchemaNames';
 import { queryClient } from '../../data/queryClient';
 
 export default function SchemaListPage() {
@@ -23,13 +23,7 @@ export default function SchemaListPage() {
   );
 
   // Subscribe to the backing query to get loading state
-  const { isLoading } = useQuery({
-    queryKey: ['schemas'] as const,
-    queryFn: async (): Promise<SchemaItem[]> => {
-      return await getAdminClient().provisioning.schemas.getSchema(undefined, { namesOnly: true }) as SchemaItem[];
-    },
-    staleTime: 30_000,
-  });
+  const { isLoading } = useSchemaNames();
 
   const schemas: SchemaItem[] = (result?.data as SchemaItem[] | undefined) ?? [];
 
@@ -64,8 +58,8 @@ export default function SchemaListPage() {
       message.success(`Schema renamed to "${values.name}"`);
       renameForm.resetFields();
       setRenameOpen(false);
-      queryClient.invalidateQueries({ queryKey: ['schemas'] });
-      queryClient.invalidateQueries({ queryKey: ['schema-detail', renameTarget] });
+      queryClient.invalidateQueries({ queryKey: SCHEMAS_KEY });
+      queryClient.invalidateQueries({ queryKey: tableSummaryKey(renameTarget) });
     } catch (e: unknown) {
       message.error(getErrorMessage(e));
     } finally {
