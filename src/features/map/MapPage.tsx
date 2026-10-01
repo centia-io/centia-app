@@ -23,6 +23,7 @@ import {
 import { computeWmsViewport, fetchWmsImage, wmsLayerName } from './wmsImage';
 import LayerStyleDrawer from './LayerStyleDrawer';
 import { useGeoTables } from './geoTables';
+import { useLayerOrder } from './layerOrder';
 import { useSchemaNames } from '../../hooks/useSchemaNames';
 import { clearAgentPageContext, setAgentPageContext } from '../../agent/agentContext';
 
@@ -83,6 +84,17 @@ function mvtSourceId(gt: GeoTable) {
   return `mvt-${gt.schema}.${gt.table}`;
 }
 
+/** Every MapLibre layer id a table can render as, bottom to top within the table. */
+function mapLayerIds(gt: GeoTable) {
+  const mvt = mvtSourceId(gt);
+  return [
+    wmsSourceId(gt),
+    tilesSourceId(gt),
+    `${mvt}-fill`, `${mvt}-line`, `${mvt}-circle`,
+    layerId(gt), `${layerId(gt)}-outline`,
+  ];
+}
+
 type TileMode = 'tiles' | 'mvt';
 
 export default function MapPage() {
@@ -107,7 +119,21 @@ export default function MapPage() {
   const database = (user?.database as string) ?? '';
 
   const { data: schemaNames = [], isLoading: schemasLoading, error: schemasError } = useSchemaNames();
-  const { geoTables: visibleTables, isLoading: tablesLoading, error: tablesError } = useGeoTables(selectedSchema);
+  const { geoTables: schemaTables, isLoading: tablesLoading, error: tablesError } = useGeoTables(selectedSchema);
+  const { compare: compareLayers } = useLayerOrder([selectedSchema, ...activeLayers.map((l) => l.schema)]);
+  const visibleTables = [...schemaTables].sort(compareLayers);
+  const compareRef = useRef(compareLayers);
+  compareRef.current = compareLayers;
+
+  /** Stack the active layers so the highest sort_id is drawn on top. */
+  const restack = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const bottomToTop = [...mapStore.get().activeLayers].sort(compareRef.current).reverse();
+    for (const gt of bottomToTop) {
+      for (const id of mapLayerIds(gt)) if (map.getLayer(id)) map.moveLayer(id);
+    }
+  }, []);
   const loading = schemasLoading || tablesLoading;
   const error = schemasError ?? tablesError;
 
@@ -187,6 +213,7 @@ export default function MapPage() {
       }
 
       interactiveLayerIds.current.add(lid);
+      restack();
 
       if (opts.fit) {
         const bounds = computeBounds(geojson);
@@ -199,7 +226,7 @@ export default function MapPage() {
         return next;
       });
     }
-  }, []);
+  }, [restack]);
 
   const removeLayer = useCallback((gt: GeoTable) => {
     const map = mapRef.current;
@@ -247,6 +274,7 @@ export default function MapPage() {
       } else {
         map.addSource(wid, { type: 'image', url, coordinates: viewport.coordinates });
         map.addLayer({ id: wid, type: 'raster', source: wid, paint: { 'raster-fade-duration': 0 } });
+        restack();
       }
       wmsUrls.current.set(wid, url);
       if (old) URL.revokeObjectURL(old);
@@ -268,7 +296,7 @@ export default function MapPage() {
         });
       }
     }
-  }, [database]);
+  }, [database, restack]);
 
   const removeWms = useCallback((gt: GeoTable) => {
     const map = mapRef.current;
@@ -311,6 +339,7 @@ export default function MapPage() {
           scheme: 'tms',
         });
         map.addLayer({ id: sid, type: 'raster', source: sid });
+        restack();
       } else {
         const sid = mvtSourceId(gt);
         if (map.getSource(sid)) return;
@@ -351,9 +380,10 @@ export default function MapPage() {
         interactiveLayerIds.current.add(`${sid}-fill`);
         interactiveLayerIds.current.add(`${sid}-line`);
         interactiveLayerIds.current.add(`${sid}-circle`);
+        restack();
       }
     },
-    [database],
+    [database, restack],
   );
 
   const removeTiles = useCallback((gt: GeoTable, mode: TileMode) => {
@@ -491,6 +521,10 @@ export default function MapPage() {
       if (al.renderMode === 'wms') showWms(al);
     }
   }, [wmsRefresh, mapReady, showWms]);
+
+  useEffect(() => {
+    if (mapReady) restack();
+  }, [compareLayers, activeLayers, mapReady, restack]);
 
   useEffect(() => {
     setAgentPageContext('map', {
