@@ -107,9 +107,10 @@ export default function TileCachePage() {
             showIcon
             message={
               <>
-                The schema's combined image tileset (<Text code>{schema}</Text>) is not served through this
-                endpoint yet: GC2's proxy rejects tileset names without a dot, so the PNG templates below answer
-                403. The vector tileset (<Text code>{schema}.mvt</Text>) works.
+                The schema tileset (<Text code>{schema}</Text>, <Text code>{schema}.mvt</Text>) is drawn from every
+                layer of the schema, so fetching it requires read access to all of them: if one layer is protected,
+                the whole schema tileset needs credentials, even if the other layers are public. The XYZ (gmaps)
+                URLs don&apos;t work for a schema tileset yet (GC2 answers 403); use the TMS templates.
               </>
             }
           />
