@@ -331,10 +331,11 @@ function TablesPanel({ schema }: { schema: string }) {
     return filtered.sort((a, b) => {
       const av = tablesMeta[a.name]?.sort_id ?? null;
       const bv = tablesMeta[b.name]?.sort_id ?? null;
+      // Highest sort_id first, as on the map; tables without one last.
       if (av == null && bv == null) return a.name.localeCompare(b.name);
       if (av == null) return 1;
       if (bv == null) return -1;
-      return av - bv;
+      return bv - av || a.name.localeCompare(b.name);
     });
   }, [tables, tablesMeta, search]);
 
@@ -363,10 +364,10 @@ function TablesPanel({ schema }: { schema: string }) {
     const reordered = arrayMove(sortedTables, oldIndex, newIndex);
     setLocalOrder(reordered.map((r) => r.name));
 
-    // Assign sort_id in steps of 10
+    // Assign sort_id in steps of 10, highest at the top of the list
     const relations: Record<string, { sort_id: number }> = {};
     reordered.forEach((row, i) => {
-      relations[`${schema}.${row.name}`] = { sort_id: (i + 1) * 10 };
+      relations[`${schema}.${row.name}`] = { sort_id: (reordered.length - i) * 10 };
     });
 
     try {
