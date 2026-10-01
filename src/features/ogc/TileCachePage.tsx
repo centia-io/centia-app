@@ -6,6 +6,7 @@ import { useAuth } from '../../auth/AuthProvider';
 import { useGeoTables } from '../map/geoTables';
 import { useSchemaNames } from '../../hooks/useSchemaNames';
 import UrlField from './UrlField';
+import SchemaTileSettings from './SchemaTileSettings';
 
 const { Text } = Typography;
 
@@ -16,6 +17,7 @@ const GRID_OPTIONS = [
 
 export default function TileCachePage() {
   const { user } = useAuth();
+  const isSuperUser = user?.superUser === true;
   const database = (user?.database as string) ?? '';
 
   const [schema, setSchema] = useState<string | null>(null);
@@ -99,6 +101,20 @@ export default function TileCachePage() {
           </Space>
         </Card>
 
+        {schema && !table && (
+          <Alert
+            type="warning"
+            showIcon
+            message={
+              <>
+                The schema's combined image tileset (<Text code>{schema}</Text>) is not served through this
+                endpoint yet: GC2's proxy rejects tileset names without a dot, so the PNG templates below answer
+                403. The vector tileset (<Text code>{schema}.mvt</Text>) works.
+              </>
+            }
+          />
+        )}
+
         <Card title="Tile URL templates (Google Maps XYZ)" size="small">
           <Space direction="vertical" style={{ width: '100%' }}>
             <UrlField label="Cached image tiles (PNG)" url={xyzRasterTemplate} />
@@ -136,6 +152,8 @@ export default function TileCachePage() {
             />
           </Space>
         </Card>
+
+        {schema && isSuperUser && <SchemaTileSettings schema={schema} />}
       </Space>
     </div>
   );
