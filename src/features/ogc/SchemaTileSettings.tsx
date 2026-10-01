@@ -3,43 +3,18 @@ import {
   Alert, Button, Card, Divider, Form, Input, InputNumber, Popconfirm, Radio, Select, Space, Tag, Typography,
 } from 'antd';
 import { Mapcache } from '@centia-io/sdk';
-import type { MapcacheTilesetDeleteResult } from '@centia-io/sdk';
+import type { MapcacheTilesetDeleteResult, SchemaTileSettingsInput } from '@centia-io/sdk';
 import { useQuery } from '@tanstack/react-query';
 import { message } from '../../utils/message';
 import { getAdminClient, getApiErrorCode, getErrorMessage } from '../../baas/adminClient';
 
 const { Text } = Typography;
 
-/** Tiling settings of a schema's combined tilesets ("schema" and "schema.mvt"). */
-interface SchemaTileSettingsValues {
-  cache: 'sqlite' | 'disk' | 'memcache' | 's3';
-  format: 'PNG' | 'jpeg_low' | 'jpeg_medium' | 'jpeg_high';
-  ttl: number;
-  auto_expire: number | null;
-  meta_size: number;
-  meta_buffer: number;
-  s3_tile_set: string | null;
-  title: string;
-  abstract: string;
-}
-
-type Field = keyof SchemaTileSettingsValues;
-
-interface SchemaTileSettingsResponse extends SchemaTileSettingsValues {
-  schema: string;
-  schema_exists: boolean;
-  vector_format: string;
-  /** Only what is actually stored; the rest above are defaults. */
-  _stored: Partial<SchemaTileSettingsValues>;
-  /** The defaults of the settable fields (absent on servers that predate it). */
-  _defaults?: Partial<SchemaTileSettingsValues>;
-}
+type Field = keyof SchemaTileSettingsInput;
 
 const FIELDS: Field[] = ['cache', 'format', 'ttl', 'auto_expire', 'meta_size', 'meta_buffer', 's3_tile_set', 'title', 'abstract'];
 
-// No SDK methods for /schemas/{schema}/tile yet; the SDK's authenticated client bridges the gap.
-const path = (schema: string) => `api/v4/schemas/${encodeURIComponent(schema)}/tile`;
-const http = () => getAdminClient().http;
+const settings = () => getAdminClient().provisioning.schemaTileSettings;
 
 const isEmpty = (v: unknown) => v === undefined || v === null || v === '';
 
@@ -118,7 +93,7 @@ function ClearSchemaCache({ database, schema, backend }: { database: string; sch
 }
 
 export default function SchemaTileSettings({ database, schema }: { database: string; schema: string }) {
-  const [form] = Form.useForm<Partial<SchemaTileSettingsValues>>();
+  const [form] = Form.useForm<SchemaTileSettingsInput>();
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -126,7 +101,7 @@ export default function SchemaTileSettings({ database, schema }: { database: str
 
   const { data, isLoading, error: loadError, refetch } = useQuery({
     queryKey: ['schema-tile-settings', schema],
-    queryFn: async () => await http().request<SchemaTileSettingsResponse>({ path: path(schema), method: 'GET' }),
+    queryFn: async () => await settings().getSchemaTileSettings(schema),
   });
 
   useEffect(() => {
@@ -141,7 +116,7 @@ export default function SchemaTileSettings({ database, schema }: { database: str
   const handleSave = async () => {
     if (!data) return;
     const values = await form.validateFields();
-    const patch: Record<string, unknown> = {};
+    const patch: Record<string, unknown> = {}; // SchemaTileSettingsInput, built per field
     for (const f of FIELDS) {
       const next = isEmpty(values[f]) ? null : values[f];
       const prev = data._stored[f] ?? null;
@@ -155,7 +130,7 @@ export default function SchemaTileSettings({ database, schema }: { database: str
     setSaving(true);
     setError(null);
     try {
-      await http().requestFull({ path: path(schema), method: 'PATCH', body: patch, expectedStatus: 303 });
+      await settings().patchSchemaTileSettings(schema, patch as SchemaTileSettingsInput);
       // refetch, not fetchQuery: the app-wide staleTime would hand back the pre-save data.
       const after = (await refetch()).data;
       if (!after) return;
@@ -174,7 +149,7 @@ export default function SchemaTileSettings({ database, schema }: { database: str
     setResetting(true);
     setError(null);
     try {
-      await http().request({ path: path(schema), method: 'DELETE', expectedStatus: 204 });
+      await settings().deleteSchemaTileSettings(schema);
       // refetch, not fetchQuery: the app-wide staleTime would hand back the pre-save data.
       const after = (await refetch()).data;
       if (!after) return;
@@ -189,6 +164,7 @@ export default function SchemaTileSettings({ database, schema }: { database: str
 
   const defaultOf = (f: Field): unknown => {
     if (!data) return undefined;
+    // _defaults is typed as always present, but servers that predate it omit it.
     if (data._defaults) return data._defaults[f];
     // Without _defaults the effective value equals the default only for unstored fields.
     return f in data._stored ? undefined : data[f];
