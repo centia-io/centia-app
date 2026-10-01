@@ -2,7 +2,7 @@ import { Menu } from 'antd';
 import { useEffect, useRef } from 'react';
 import {
   CameraOutlined,
-  FieldTimeOutlined,
+  FieldTimeOutlined, BuildOutlined,
   DashboardOutlined,
   DatabaseOutlined,
   TableOutlined,
@@ -54,6 +54,7 @@ const items = [
   { type: 'group' as const, label: 'Tools', children: [
     { key: '/snapshots', icon: <CameraOutlined />, label: 'Snapshots' },
     { key: '/scheduler', icon: <FieldTimeOutlined />, label: 'Scheduler' },
+    { key: '/tileseeder', icon: <BuildOutlined />, label: 'Tile Seeder' },
     { key: '/metadata', icon: <FileTextOutlined />, label: 'Metadata' },
     { key: '/import', icon: <CloudUploadOutlined />, label: 'File Import' },
     { key: '/git', icon: <BranchesOutlined />, label: 'Git Commit' },

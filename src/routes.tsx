@@ -27,6 +27,7 @@ const TileCachePage = lazy(() => import('./features/ogc/TileCachePage'));
 const KeyValuePage = lazy(() => import('./features/keyvalue/KeyValuePage'));
 const SnapshotsPage = lazy(() => import('./features/snapshots/SnapshotsPage'));
 const SchedulerPage = lazy(() => import('./features/scheduler/SchedulerPage'));
+const TileSeederPage = lazy(() => import('./features/tileseeder/TileSeederPage'));
 
 const ProtectedRoute = lazy(() => import('./auth/ProtectedRoute'));
 
@@ -65,6 +66,7 @@ export const routes: RouteObject[] = [
       { path: 'rules', element: <RuleListPage /> },
       { path: 'snapshots', element: <SnapshotsPage /> },
       { path: 'scheduler', element: <SchedulerPage /> },
+      { path: 'tileseeder', element: <TileSeederPage /> },
       { path: 'metadata', element: <MetadataEditorPage /> },
       { path: 'import', element: <FileImportPage /> },
       { path: 'git', element: <GitCommitPage /> },
