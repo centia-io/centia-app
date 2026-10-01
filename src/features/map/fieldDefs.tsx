@@ -33,7 +33,10 @@ export function FieldInput({
         <InputNumber
           size="small"
           style={{ width: '100%' }}
-          value={typeof value === 'string' && value !== '' ? Number(value) : null}
+          // GC2 returns these as strings or as numbers, depending on how they were stored.
+          value={
+            typeof value === 'number' ? value : typeof value === 'string' && value !== '' ? Number(value) : null
+          }
           onChange={(v) => onChange(v === null ? '' : String(v))}
         />
       );
