@@ -30,7 +30,8 @@ export default function TileCachePage() {
 
   const mc = new Mapcache(getAdminClient().http);
   const db = database || '{database}';
-  const tileset = schema && table ? `${schema}.${table}` : '{schema}.{table}';
+  // A schema alone is a tileset too (all its layers); a table narrows it to that layer.
+  const tileset = schema ? (table ? `${schema}.${table}` : schema) : '{schema}.{table}';
 
   const wmtsCapabilities = mc.mapcacheUrl(db, 'wmts/1.0.0/WMTSCapabilities.xml');
   const rasterTemplate = mc.mapcacheUrl(db, `tms/1.0.0/${tileset}@${grid}/{z}/{x}/{y}.png`);
@@ -60,8 +61,9 @@ export default function TileCachePage() {
           showSearch
           loading={tablesLoading}
           disabled={!schema}
+          allowClear
           value={table}
-          onChange={setTable}
+          onChange={(v?: string) => setTable(v ?? null)}
           options={tables.map((t) => ({ label: t, value: t }))}
         />
         <Select
