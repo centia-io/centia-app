@@ -33,6 +33,8 @@ const STATUS_COLOR: Record<SeedJobStatus, string> = {
 const STATUSES: SeedJobStatus[] = ['pending', 'running', 'succeeded', 'failed', 'cancelled'];
 const isActive = (j: SeedJob) => j.status === 'pending' || j.status === 'running';
 
+type TileKind = 'raster' | 'vector';
+
 /** Layer value for a schema's own tileset, named just "schema". */
 const SCHEMA_TILESET = '*';
 const toTilesetId = (schema: string, layer: string) => (layer === SCHEMA_TILESET ? schema : `${schema}.${layer}`);
@@ -87,7 +89,7 @@ export default function TileSeederPage() {
   const { user } = useAuth();
   const database = (user?.database as string) ?? '';
   const [form] = Form.useForm();
-  const [includeVector, setIncludeVector] = useState(false);
+  const [tileKinds, setTileKinds] = useState<TileKind[]>(['raster']);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<SeedJobStatus | undefined>();
@@ -146,10 +148,10 @@ export default function TileSeederPage() {
   const tileCount = inExtent ?? tileUpperBound(grid, zFrom, zTo);
 
   // Tilesets are "schema.layer" (vector variants "schema.layer.mvt"/".json"),
-  // plus one per schema named just "schema" that covers all its layers.
+  // plus one per schema named just "schema" (and "schema.mvt") covering all its layers.
   const visibleTilesets = useMemo(
-    () => (caps.data?.tilesets ?? []).filter((t) => includeVector || !t.vector),
-    [caps.data, includeVector],
+    () => (caps.data?.tilesets ?? []).filter((t) => tileKinds.includes(t.vector ? 'vector' : 'raster')),
+    [caps.data, tileKinds],
   );
   const tilesetSchemas = useMemo(
     () => [...new Set(visibleTilesets.map((t) => t.id.split('.')[0]))].sort(),
@@ -159,12 +161,24 @@ export default function TileSeederPage() {
     if (!tilesetSchema) return [];
     const options = visibleTilesets
       .filter((t) => t.id.startsWith(`${tilesetSchema}.`))
-      .map((t) => ({ label: t.id.slice(tilesetSchema.length + 1), value: t.id.slice(tilesetSchema.length + 1) }));
+      .map((t) => {
+        const layer = t.id.slice(tilesetSchema.length + 1);
+        const schemaVector = layer === 'mvt' || layer === 'json';
+        return { label: schemaVector ? `All layers (schema tileset, ${layer.toUpperCase()})` : layer, value: layer };
+      })
+      .sort((a, b) => Number(b.label.startsWith('All layers')) - Number(a.label.startsWith('All layers')));
     if (visibleTilesets.some((t) => t.id === tilesetSchema)) {
       options.unshift({ label: 'All layers (schema tileset)', value: SCHEMA_TILESET });
     }
     return options;
   }, [visibleTilesets, tilesetSchema]);
+  // Drop a chosen layer that the tile-type filter no longer offers.
+  useEffect(() => {
+    const layer = form.getFieldValue('tileset_layer') as string | undefined;
+    if (layer && !tilesetLayerOptions.some((o) => o.value === layer)) form.setFieldsValue({ tileset_layer: undefined });
+    const sch = form.getFieldValue('tileset_schema') as string | undefined;
+    if (sch && !tilesetSchemas.includes(sch)) form.setFieldsValue({ tileset_schema: undefined, tileset_layer: undefined });
+  }, [tilesetLayerOptions, tilesetSchemas, form]);
 
   const handleSubmit = async () => {
     const v = await form.validateFields();
@@ -233,9 +247,18 @@ export default function TileSeederPage() {
               label="Tileset"
               required
               extra={
-                <Checkbox checked={includeVector} onChange={(e) => setIncludeVector(e.target.checked)}>
-                  Include vector tilesets (.mvt / .json)
-                </Checkbox>
+                <Space size="small">
+                  <Text type="secondary">Tile types:</Text>
+                  <Checkbox.Group
+                    value={tileKinds}
+                    onChange={(v) => setTileKinds(v as TileKind[])}
+                    options={[
+                      { label: 'Raster (PNG/JPEG)', value: 'raster' },
+                      { label: 'Vector (MVT/JSON)', value: 'vector' },
+                    ]}
+                  />
+                  {tileKinds.length === 0 && <Text type="warning">Choose at least one type</Text>}
+                </Space>
               }
             >
               <Space.Compact style={{ width: '100%' }}>
