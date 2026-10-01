@@ -5,7 +5,8 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
 import { message } from '../../utils/message';
-import { Mapcache, isCentiaApiError } from '@centia-io/sdk';
+import { Mapcache } from '@centia-io/sdk';
+import type { MapcacheTilesetWipeCompleted } from '@centia-io/sdk';
 import { useAuth } from '../../auth/AuthProvider';
 import { getSql, getStatus } from '../../baas/client';
 import { useQuery } from '@tanstack/react-query';
@@ -602,28 +603,18 @@ export default function MapPage() {
     if (clearScope === 'viewport' && map) {
       opts.bbox = computeWmsViewport(map).bbox.join(',');
     }
-    // A full delete on an sqlite/bdb backend wipes synchronously and answers
-    // 200 {mode: 'wipe', backend, removed}, but the SDK only accepts 202 and
-    // throws on that success — its body is then the error's details.
-    type DeleteResult = { mode?: string; backend?: string; removed?: number };
-    const del = async (tileset: string): Promise<DeleteResult> => {
-      try {
-        return ((await mc.deleteMapcacheTileset(database, tileset, opts)) ?? {}) as DeleteResult;
-      } catch (e) {
-        if (isCentiaApiError(e) && e.status === 200) return ((e as { details?: unknown }).details ?? {}) as DeleteResult;
-        throw e;
-      }
-    };
     setClearing(true);
     try {
-      const results = await Promise.all([del(`${gt.schema}.${gt.table}`), del(`${gt.schema}.${gt.table}.mvt`)]);
-      const completed = results.every((r) => r.removed !== undefined);
+      const results = await Promise.all([
+        mc.deleteMapcacheTileset(database, `${gt.schema}.${gt.table}`, opts),
+        mc.deleteMapcacheTileset(database, `${gt.schema}.${gt.table}.mvt`, opts),
+      ]);
+      const wiped = results.filter((r): r is MapcacheTilesetWipeCompleted => 'removed' in r);
       // Only sqlite reports a tile count; bdb/disk report 1/0 for "the cache existed".
-      const counted = completed && results.every((r) => r.backend === 'sqlite');
-      if (!completed) {
+      if (wiped.length < results.length) {
         message.success('Tile cache clearing started');
-      } else if (counted) {
-        const [png, mvt] = results.map((r) => r.removed ?? 0);
+      } else if (wiped.every((r) => r.backend === 'sqlite')) {
+        const [png, mvt] = wiped.map((r) => r.removed);
         message.success(
           `Tile cache deleted: ${(png + mvt).toLocaleString()} tiles removed (${png.toLocaleString()} image, ${mvt.toLocaleString()} vector)`,
         );
