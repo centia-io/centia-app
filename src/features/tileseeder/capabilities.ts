@@ -4,13 +4,16 @@ import { getAdminClient } from '../../baas/adminClient';
 import { getSql } from '../../baas/client';
 import { useTableSummary } from '../../hooks/useSchemaNames';
 
+export type TileKind = 'raster' | 'mvt' | 'json';
+
 export interface SeedTileset {
   /** The tileset name the seeder expects, e.g. "schema.table" or "schema.table.mvt". */
   id: string;
   title: string;
   /** Grid names (not titles) the tileset declares. */
   grids: string[];
-  vector: boolean;
+  /** Raster image tiles, or the .mvt / .json vector variants. */
+  kind: TileKind;
 }
 
 export interface SeedGrid {
@@ -54,7 +57,7 @@ function parse(xml: string): SeedCapabilities {
         id,
         title: childText(el, OWS, 'Title') ?? id,
         grids: [...new Set(linked)],
-        vector: /\.(mvt|json)$/.test(id),
+        kind: id.endsWith('.mvt') ? 'mvt' : id.endsWith('.json') ? 'json' : 'raster',
       });
     } else if (el.localName === 'TileMatrixSet') {
       const id = childText(el, OWS, 'Identifier');

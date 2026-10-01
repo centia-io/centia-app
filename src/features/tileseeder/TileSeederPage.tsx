@@ -14,7 +14,7 @@ import { queryClient } from '../../data/queryClient';
 import { useSchemaNames } from '../../hooks/useSchemaNames';
 import { useGeoTables } from '../map/geoTables';
 import {
-  isWebMercatorPyramid, tilesInBBox, useEstimatedExtent, useSeedCapabilities, type SeedGrid,
+  isWebMercatorPyramid, tilesInBBox, useEstimatedExtent, useSeedCapabilities, type SeedGrid, type TileKind,
 } from './capabilities';
 
 const { Text } = Typography;
@@ -32,8 +32,6 @@ const STATUS_COLOR: Record<SeedJobStatus, string> = {
 };
 const STATUSES: SeedJobStatus[] = ['pending', 'running', 'succeeded', 'failed', 'cancelled'];
 const isActive = (j: SeedJob) => j.status === 'pending' || j.status === 'running';
-
-type TileKind = 'raster' | 'vector';
 
 /** Layer value for a schema's own tileset, named just "schema". */
 const SCHEMA_TILESET = '*';
@@ -150,7 +148,7 @@ export default function TileSeederPage() {
   // Tilesets are "schema.layer" (vector variants "schema.layer.mvt"/".json"),
   // plus one per schema named just "schema" (and "schema.mvt") covering all its layers.
   const visibleTilesets = useMemo(
-    () => (caps.data?.tilesets ?? []).filter((t) => tileKinds.includes(t.vector ? 'vector' : 'raster')),
+    () => (caps.data?.tilesets ?? []).filter((t) => tileKinds.includes(t.kind)),
     [caps.data, tileKinds],
   );
   const tilesetSchemas = useMemo(
@@ -254,7 +252,8 @@ export default function TileSeederPage() {
                     onChange={(v) => setTileKinds(v as TileKind[])}
                     options={[
                       { label: 'Raster (PNG/JPEG)', value: 'raster' },
-                      { label: 'Vector (MVT/JSON)', value: 'vector' },
+                      { label: 'MVT', value: 'mvt' },
+                      { label: 'JSON', value: 'json' },
                     ]}
                   />
                   {tileKinds.length === 0 && <Text type="warning">Choose at least one type</Text>}
