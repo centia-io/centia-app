@@ -60,6 +60,18 @@ function JobStatus({ job }: { job: SeedJob }) {
   );
 }
 
+/**
+ * mapcache_seed redraws its progress line with carriage returns; keep only
+ * what a terminal would show — the last text written on each line.
+ */
+function terminalText(log: string): string {
+  return log
+    .split('\n')
+    .map((line) => line.split('\r').map((seg) => seg.trimEnd()).filter(Boolean).pop() ?? '')
+    .join('\n')
+    .trimEnd();
+}
+
 function errorText(e: unknown): string {
   const code = getApiErrorCode(e);
   return code ? `${code}: ${getErrorMessage(e)}` : getErrorMessage(e);
@@ -399,7 +411,7 @@ export default function TileSeederPage() {
                   wordBreak: 'break-all', fontFamily: 'monospace',
                 }}
               >
-                {detail.log}
+                {terminalText(detail.log)}
               </pre>
             ) : (
               <Text type="secondary">No output yet.</Text>
