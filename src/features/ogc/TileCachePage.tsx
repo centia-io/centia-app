@@ -153,7 +153,7 @@ export default function TileCachePage() {
           </Space>
         </Card>
 
-        {schema && isSuperUser && <SchemaTileSettings schema={schema} />}
+        {schema && isSuperUser && <SchemaTileSettings database={database} schema={schema} />}
       </Space>
     </div>
   );

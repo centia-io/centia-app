@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Card, Form, Input, InputNumber, Popconfirm, Select, Space, Tag, Typography } from 'antd';
+import {
+  Alert, Button, Card, Divider, Form, Input, InputNumber, Popconfirm, Radio, Select, Space, Tag, Typography,
+} from 'antd';
+import { Mapcache } from '@centia-io/sdk';
+import type { MapcacheTilesetDeleteResult } from '@centia-io/sdk';
 import { useQuery } from '@tanstack/react-query';
 import { message } from '../../utils/message';
 import { getAdminClient, getApiErrorCode, getErrorMessage } from '../../baas/adminClient';
@@ -27,6 +31,8 @@ interface SchemaTileSettingsResponse extends SchemaTileSettingsValues {
   vector_format: string;
   /** Only what is actually stored; the rest above are defaults. */
   _stored: Partial<SchemaTileSettingsValues>;
+  /** The defaults of the settable fields (absent on servers that predate it). */
+  _defaults?: Partial<SchemaTileSettingsValues>;
 }
 
 const FIELDS: Field[] = ['cache', 'format', 'ttl', 'auto_expire', 'meta_size', 'meta_buffer', 's3_tile_set', 'title', 'abstract'];
@@ -37,7 +43,81 @@ const http = () => getAdminClient().http;
 
 const isEmpty = (v: unknown) => v === undefined || v === null || v === '';
 
-export default function SchemaTileSettings({ schema }: { schema: string }) {
+/** Backends that cannot be wiped whole; only a scoped (zoom/bbox) delete reaches them. */
+const SCOPED_ONLY = new Set(['s3', 'memcache']);
+
+/** Clear the cached tiles of a schema's combined tilesets. */
+function ClearSchemaCache({ database, schema, backend }: { database: string; schema: string; backend: string }) {
+  const scopedOnly = SCOPED_ONLY.has(backend);
+  const [scope, setScope] = useState<'all' | 'zoom'>(scopedOnly ? 'zoom' : 'all');
+  const [zoom, setZoom] = useState<[number | null, number | null]>([0, 12]);
+  const [clearing, setClearing] = useState(false);
+  useEffect(() => setScope(scopedOnly ? 'zoom' : 'all'), [scopedOnly]);
+
+  const zoomValid = zoom[0] !== null && zoom[1] !== null && zoom[0] <= zoom[1];
+
+  const handleClear = async () => {
+    const mc = new Mapcache(getAdminClient().http);
+    const opts = scope === 'zoom' ? { zoom: `${zoom[0]},${zoom[1]}` } : {};
+    setClearing(true);
+    try {
+      const results: MapcacheTilesetDeleteResult[] = await Promise.all([
+        mc.deleteMapcacheTileset(database, schema, opts),
+        mc.deleteMapcacheTileset(database, `${schema}.mvt`, opts),
+      ]);
+      const done = results.filter((r) => 'removed' in r);
+      if (done.length < results.length) {
+        message.success('Clearing the schema cache started; it runs in the background.');
+      } else if (done.every((r) => r.backend === 'sqlite')) {
+        const [img, vec] = done.map((r) => ('removed' in r ? r.removed : 0));
+        message.success(`Schema cache cleared: ${(img + vec).toLocaleString()} tiles removed (${img.toLocaleString()} image, ${vec.toLocaleString()} vector)`);
+      } else {
+        message.success('Schema cache cleared');
+      }
+    } catch (e) {
+      const code = getApiErrorCode(e);
+      message.error(code ? `${code}: ${getErrorMessage(e)}` : getErrorMessage(e));
+    } finally {
+      setClearing(false);
+    }
+  };
+
+  return (
+    <>
+      <Divider titlePlacement="start" orientationMargin={0}>Cached tiles</Divider>
+      <Space direction="vertical">
+        <Radio.Group value={scope} onChange={(e) => setScope(e.target.value)}>
+          <Radio value="all" disabled={scopedOnly}>Entire tilesets</Radio>
+          <Radio value="zoom">Zoom range</Radio>
+        </Radio.Group>
+        {scopedOnly && (
+          <Text type="secondary">
+            A {backend} cache can't be wiped whole; clear it by zoom range instead (runs in the background).
+          </Text>
+        )}
+        {scope === 'zoom' && (
+          <Space>
+            <InputNumber min={0} max={30} value={zoom[0]} onChange={(v) => setZoom([v, zoom[1]])} addonBefore="From z" />
+            <InputNumber min={0} max={30} value={zoom[1]} onChange={(v) => setZoom([zoom[0], v])} addonBefore="to z" />
+          </Space>
+        )}
+        <Popconfirm
+          title={`Delete the cached tiles of ${schema} and ${schema}.mvt${scope === 'zoom' ? ` at zoom ${zoom[0]}–${zoom[1]}` : ''}?`}
+          okText="Clear"
+          okButtonProps={{ danger: true }}
+          onConfirm={handleClear}
+          disabled={scope === 'zoom' && !zoomValid}
+        >
+          <Button danger loading={clearing} disabled={scope === 'zoom' && !zoomValid}>
+            Clear cache
+          </Button>
+        </Popconfirm>
+      </Space>
+    </>
+  );
+}
+
+export default function SchemaTileSettings({ database, schema }: { database: string; schema: string }) {
   const [form] = Form.useForm<Partial<SchemaTileSettingsValues>>();
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -107,9 +187,13 @@ export default function SchemaTileSettings({ schema }: { schema: string }) {
     }
   };
 
-  // The effective value equals the default only for fields that are not stored.
-  const placeholder = (f: Field) =>
-    data && !(f in data._stored) && !isEmpty(data[f]) ? `Default: ${data[f]}` : 'Default';
+  const defaultOf = (f: Field): unknown => {
+    if (!data) return undefined;
+    if (data._defaults) return data._defaults[f];
+    // Without _defaults the effective value equals the default only for unstored fields.
+    return f in data._stored ? undefined : data[f];
+  };
+  const placeholder = (f: Field) => (isEmpty(defaultOf(f)) ? 'Default' : `Default: ${defaultOf(f)}`);
   const storedCount = data ? Object.keys(data._stored).length : 0;
 
   return (
@@ -220,6 +304,7 @@ export default function SchemaTileSettings({ schema }: { schema: string }) {
             </Popconfirm>
             <Text type="secondary">{storedCount === 0 ? 'All defaults' : `${storedCount} setting(s) stored`}</Text>
           </Space>
+          {data.schema_exists && <ClearSchemaCache database={database} schema={schema} backend={data.cache} />}
         </>
       )}
     </Card>
