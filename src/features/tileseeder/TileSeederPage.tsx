@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Alert, AutoComplete, Button, Card, Checkbox, Descriptions, Drawer, Form, Input, InputNumber, Popconfirm,
+  Alert, Button, Card, Checkbox, Descriptions, Drawer, Form, Input, InputNumber, Popconfirm,
   Select, Slider, Space, Table, Tag, Tooltip, Typography,
 } from 'antd';
 import { ReloadOutlined, RocketOutlined, StopOutlined } from '@ant-design/icons';
@@ -11,6 +11,8 @@ import { message } from '../../utils/message';
 import { getAdminClient, getApiErrorCode, getErrorMessage } from '../../baas/adminClient';
 import { useAuth } from '../../auth/AuthProvider';
 import { queryClient } from '../../data/queryClient';
+import { useSchemaNames } from '../../hooks/useSchemaNames';
+import { useGeoTables } from '../map/geoTables';
 import {
   isWebMercatorPyramid, tilesInBBox, useEstimatedExtent, useSeedCapabilities, type SeedGrid,
 } from './capabilities';
@@ -30,6 +32,10 @@ const STATUS_COLOR: Record<SeedJobStatus, string> = {
 };
 const STATUSES: SeedJobStatus[] = ['pending', 'running', 'succeeded', 'failed', 'cancelled'];
 const isActive = (j: SeedJob) => j.status === 'pending' || j.status === 'running';
+
+/** Layer value for a schema's own tileset, named just "schema". */
+const SCHEMA_TILESET = '*';
+const toTilesetId = (schema: string, layer: string) => (layer === SCHEMA_TILESET ? schema : `${schema}.${layer}`);
 
 /** Seeding beyond this many tiles can run for hours. */
 const LARGE_SEED = 1_000_000;
@@ -89,10 +95,16 @@ export default function TileSeederPage() {
   const [detailUuid, setDetailUuid] = useState<string | null>(null);
 
   const caps = useSeedCapabilities(database);
-  const tilesetId = Form.useWatch('tileset', form) as string | undefined;
+  const tilesetSchema = Form.useWatch('tileset_schema', form) as string | undefined;
+  const tilesetLayer = Form.useWatch('tileset_layer', form) as string | undefined;
+  const tilesetId = tilesetSchema && tilesetLayer ? toTilesetId(tilesetSchema, tilesetLayer) : undefined;
   const gridId = Form.useWatch('grid', form) as string | undefined;
   const zoom = Form.useWatch('zoom', form) as [number, number] | undefined;
-  const extentLayer = Form.useWatch('extent_layer', form) as string | undefined;
+  const extentSchema = Form.useWatch('extent_schema', form) as string | undefined;
+  const extentTable = Form.useWatch('extent_table', form) as string | undefined;
+  const extentLayer = extentSchema && extentTable ? `${extentSchema}.${extentTable}` : undefined;
+  const { data: schemaNames = [], isLoading: schemasLoading } = useSchemaNames();
+  const { geoTables: extentTables, isLoading: extentTablesLoading } = useGeoTables(extentSchema);
 
   const tileset = caps.data?.tilesets.find((t) => t.id === tilesetId);
   const grid = gridId ? caps.data?.grids[gridId] : undefined;
@@ -133,24 +145,37 @@ export default function TileSeederPage() {
   const inExtent = grid && extentLayer && extentBBox && isWebMercatorPyramid(grid) ? tilesInBBox(extentBBox, zFrom, zTo) : null;
   const tileCount = inExtent ?? tileUpperBound(grid, zFrom, zTo);
 
-  const tilesetOptions = useMemo(
-    () =>
-      (caps.data?.tilesets ?? [])
-        .filter((t) => includeVector || !t.vector)
-        .map((t) => ({ label: t.id, value: t.id })),
+  // Tilesets are "schema.layer" (vector variants "schema.layer.mvt"/".json"),
+  // plus one per schema named just "schema" that covers all its layers.
+  const visibleTilesets = useMemo(
+    () => (caps.data?.tilesets ?? []).filter((t) => includeVector || !t.vector),
     [caps.data, includeVector],
   );
+  const tilesetSchemas = useMemo(
+    () => [...new Set(visibleTilesets.map((t) => t.id.split('.')[0]))].sort(),
+    [visibleTilesets],
+  );
+  const tilesetLayerOptions = useMemo(() => {
+    if (!tilesetSchema) return [];
+    const options = visibleTilesets
+      .filter((t) => t.id.startsWith(`${tilesetSchema}.`))
+      .map((t) => ({ label: t.id.slice(tilesetSchema.length + 1), value: t.id.slice(tilesetSchema.length + 1) }));
+    if (visibleTilesets.some((t) => t.id === tilesetSchema)) {
+      options.unshift({ label: 'All layers (schema tileset)', value: SCHEMA_TILESET });
+    }
+    return options;
+  }, [visibleTilesets, tilesetSchema]);
 
   const handleSubmit = async () => {
     const v = await form.validateFields();
     const body: SeedJobInput = {
-      tileset: v.tileset,
+      tileset: toTilesetId(v.tileset_schema, v.tileset_layer),
       grid: v.grid,
       zoom_start: v.zoom[0],
       zoom_end: v.zoom[1],
     };
     if (v.name) body.name = v.name;
-    if (v.extent_layer) body.extent_layer = v.extent_layer;
+    if (v.extent_schema && v.extent_table) body.extent_layer = `${v.extent_schema}.${v.extent_table}`;
     if (v.threads) body.threads = v.threads;
     setSubmitting(true);
     setSubmitError(null);
@@ -213,17 +238,27 @@ export default function TileSeederPage() {
                 </Checkbox>
               }
             >
-              <Form.Item name="tileset" noStyle rules={[{ required: true, message: 'Choose a tileset' }]}>
-                <Select
-                  showSearch
-                  loading={caps.isLoading}
-                  placeholder="schema.table"
-                  options={tilesetOptions}
-                  onChange={(t: string) =>
-                    form.setFieldsValue({ extent_layer: t.replace(/\.(mvt|json)$/, '') })
-                  }
-                />
-              </Form.Item>
+              <Space.Compact style={{ width: '100%' }}>
+                <Form.Item name="tileset_schema" noStyle rules={[{ required: true, message: 'Choose a schema' }]}>
+                  <Select
+                    showSearch
+                    loading={caps.isLoading}
+                    placeholder="Schema"
+                    style={{ width: '40%' }}
+                    options={tilesetSchemas.map((n) => ({ label: n, value: n }))}
+                    onChange={() => form.setFieldsValue({ tileset_layer: undefined })}
+                  />
+                </Form.Item>
+                <Form.Item name="tileset_layer" noStyle rules={[{ required: true, message: 'Choose a layer' }]}>
+                  <Select
+                    showSearch
+                    placeholder="Layer"
+                    style={{ width: '60%' }}
+                    disabled={!tilesetSchema}
+                    options={tilesetLayerOptions}
+                  />
+                </Form.Item>
+              </Space.Compact>
             </Form.Item>
             <Space wrap align="start" size="large">
               <Form.Item
@@ -262,15 +297,37 @@ export default function TileSeederPage() {
               />
             </Form.Item>
             <Form.Item
-              name="extent_layer"
               label="Extent layer"
-              tooltip="Seed only within this layer's extent. Must be a registered layer you can read. Leave empty to seed the whole grid."
+              tooltip="Seed only within this layer's extent — typically a layer with a single polygon. Must be a registered layer you can read. Leave empty to seed the whole grid."
             >
-              <AutoComplete
-                allowClear
-                placeholder="schema.table"
-                options={tileset ? [{ value: tileset.id.replace(/\.(mvt|json)$/, '') }] : []}
-              />
+              <Space.Compact style={{ width: '100%' }}>
+                <Form.Item name="extent_schema" noStyle>
+                  <Select
+                    showSearch
+                    allowClear
+                    loading={schemasLoading}
+                    placeholder="Schema"
+                    style={{ width: '40%' }}
+                    options={schemaNames.map((s) => ({ label: s.name, value: s.name }))}
+                    onChange={() => form.setFieldsValue({ extent_table: undefined })}
+                  />
+                </Form.Item>
+                <Form.Item
+                  name="extent_table"
+                  noStyle
+                  rules={[{ required: !!extentSchema, message: 'Choose a layer, or clear the schema' }]}
+                >
+                  <Select
+                    showSearch
+                    allowClear
+                    placeholder="Layer"
+                    style={{ width: '60%' }}
+                    disabled={!extentSchema}
+                    loading={extentTablesLoading}
+                    options={extentTables.map((t) => ({ label: t.table, value: t.table }))}
+                  />
+                </Form.Item>
+              </Space.Compact>
             </Form.Item>
             {grid && zoom && (
               <Alert
