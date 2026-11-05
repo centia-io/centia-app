@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Table, Button, Space, Drawer, Form, Input, Select, Spin, Alert, Switch, Tag } from 'antd';
 import { message } from '../../utils/message';
 import { PlusOutlined, DeleteOutlined, EditOutlined, SearchOutlined } from '@ant-design/icons';
-import type { CreateUserRequest, PatchUserRequest } from '@centia-io/sdk';
+import type { CreateUserRequest, PatchUserRequest } from '@mapcentia/gc2-sdk';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
 import { confirmDelete } from '../../components/ConfirmDelete';
 import { useQuery } from '@tanstack/react-query';

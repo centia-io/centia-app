@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Alert, Card, Select, Space, Typography } from 'antd';
-import { Mapcache } from '@centia-io/sdk';
+import { Mapcache } from '@mapcentia/gc2-sdk';
 import { getAdminClient } from '../../baas/adminClient';
 import { useAuth } from '../../auth/AuthProvider';
 import { useGeoTables } from '../map/geoTables';

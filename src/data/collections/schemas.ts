@@ -1,6 +1,6 @@
 import { createCollection } from '@tanstack/react-db';
 import { queryCollectionOptions } from '@tanstack/query-db-collection';
-import type { SchemaInfo } from '@centia-io/sdk';
+import type { SchemaInfo } from '@mapcentia/gc2-sdk';
 import { getAdminClient } from '../../baas/adminClient';
 import { SCHEMAS_KEY } from '../../hooks/useSchemaNames';
 import { queryClient } from '../queryClient';

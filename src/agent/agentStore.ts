@@ -1,4 +1,4 @@
-import type { UiMessage } from '@centia-io/agent-ui';
+import type { UiMessage } from '@mapcentia/gc2-agent-ui';
 import { createStore } from '../utils/createStore';
 
 interface AgentState {

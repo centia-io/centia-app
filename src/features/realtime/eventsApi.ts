@@ -7,7 +7,7 @@
 import { getStatus } from '../../baas/client';
 import type { TableSummary } from '../../hooks/useSchemaNames';
 
-const host = () => import.meta.env.VITE_CENTIA_HOST;
+const host = () => import.meta.env.VITE_GC2_HOST;
 const token = () => getStatus().getTokens().accessToken;
 
 export interface TableEventStatus {

@@ -1,4 +1,4 @@
-import type { AppContext } from '@centia-io/agent-ui';
+import type { AppContext } from '@mapcentia/gc2-agent-ui';
 
 /** Pages contribute context under a key; the drawer merges all contributions. */
 const contributions = new Map<string, Record<string, unknown>>();

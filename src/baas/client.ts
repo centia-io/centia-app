@@ -1,4 +1,4 @@
-import { CodeFlow, Sql, Rpc, Gql, Meta, Stats, Status, Claims, Tables, Users } from '@centia-io/sdk';
+import { CodeFlow, Sql, Rpc, Gql, Meta, Stats, Status, Claims, Tables, Users } from '@mapcentia/gc2-sdk';
 
 let codeFlow: CodeFlow | null = null;
 let sql: Sql | null = null;
@@ -11,8 +11,8 @@ let tables: Tables | null = null;
 let users: Users | null = null;
 
 export function initClient() {
-  const host = import.meta.env.VITE_CENTIA_HOST;
-  const clientId = import.meta.env.VITE_CENTIA_CLIENT_ID;
+  const host = import.meta.env.VITE_GC2_HOST;
+  const clientId = import.meta.env.VITE_GC2_CLIENT_ID;
 
   codeFlow = new CodeFlow({
     host,

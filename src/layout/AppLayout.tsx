@@ -11,15 +11,15 @@ export default function AppLayout() {
   const { token } = theme.useToken();
   const { resolved } = useTheme();
   const logoSrc = resolved === 'dark'
-    ? 'https://centia.io/img/centia-logo.svg'
-    : 'https://centia.io/img/centia-logo-dark.svg';
+    ? 'https://gc2.io/img/gc2-logo.svg'
+    : 'https://gc2.io/img/gc2-logo-dark.svg';
 
   return (
     <Layout style={{ height: '100vh', overflow: 'hidden' }}>
       <Sider width={220} trigger={null} style={{ background: token.colorBgContainer, borderRight: `1px solid ${token.colorBorderSecondary}`, overflow: 'hidden' }}>
         <div style={{ padding: '16px 24px', borderBottom: `1px solid ${token.colorBorderSecondary}`, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <img src={logoSrc} alt="Centia.io" style={{ height: 28 }} />
-          {/*<Typography.Title level={4} style={{ margin: 0 }}>Centia.io</Typography.Title>*/}
+          <img src={logoSrc} alt="GC2" style={{ height: 28 }} />
+          {/*<Typography.Title level={4} style={{ margin: 0 }}>GC2</Typography.Title>*/}
           <Typography.Title level={4} style={{ margin: 0 }}>GC2</Typography.Title>
         </div>
         <div style={{ height: 'calc(100vh - 62px)', overflowY: 'auto' }}>

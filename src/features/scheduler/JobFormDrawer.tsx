@@ -1,5 +1,5 @@
 import { Button, Checkbox, Drawer, Form, Input, InputNumber, Select, Space, Switch, Typography } from 'antd';
-import type { SchedulerJob, SchedulerJobInput, SnapshotFormat } from '@centia-io/sdk';
+import type { SchedulerJob, SchedulerJobInput, SnapshotFormat } from '@mapcentia/gc2-sdk';
 import { useEffect, useState } from 'react';
 
 const { Text } = Typography;

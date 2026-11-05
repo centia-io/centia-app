@@ -5,8 +5,8 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
 import { message } from '../../utils/message';
-import { Mapcache } from '@centia-io/sdk';
-import type { MapcacheTilesetWipeCompleted } from '@centia-io/sdk';
+import { Mapcache } from '@mapcentia/gc2-sdk';
+import type { MapcacheTilesetWipeCompleted } from '@mapcentia/gc2-sdk';
 import { useAuth } from '../../auth/AuthProvider';
 import { getSql, getStatus } from '../../baas/client';
 import { useQuery } from '@tanstack/react-query';
@@ -256,7 +256,7 @@ export default function MapPage() {
     try {
       const viewport = computeWmsViewport(map);
       const url = await fetchWmsImage({
-        host: import.meta.env.VITE_CENTIA_HOST,
+        host: import.meta.env.VITE_GC2_HOST,
         schema: gt.schema,
         database,
         wmsLayer: wmsLayerName(gt),

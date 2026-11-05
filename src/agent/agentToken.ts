@@ -1,5 +1,5 @@
-import { createTokenProvider } from '@centia-io/sdk';
-import type { TokenProvider, TokenStore } from '@centia-io/sdk';
+import { createTokenProvider } from '@mapcentia/gc2-sdk';
+import type { TokenProvider, TokenStore } from '@mapcentia/gc2-sdk';
 import { getCodeFlow, getStatus } from '../baas/client';
 
 /**

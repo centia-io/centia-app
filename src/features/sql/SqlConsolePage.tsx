@@ -3,7 +3,7 @@ import { Button, Select, Space, Spin, Alert, Typography } from 'antd';
 import { PlayCircleOutlined } from '@ant-design/icons';
 import { getSql } from '../../baas/client';
 import { useQueries } from '@tanstack/react-query';
-import type { SchemaInfo } from '@centia-io/sdk';
+import type { SchemaInfo } from '@mapcentia/gc2-sdk';
 import { getAdminClient } from '../../baas/adminClient';
 import { useSchemaNames, tableSummaryKey, fetchTableSummary } from '../../hooks/useSchemaNames';
 import { sql as sqlLang, PostgreSQL, type SQLNamespace } from '@codemirror/lang-sql';

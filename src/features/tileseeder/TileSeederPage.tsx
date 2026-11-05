@@ -5,8 +5,8 @@ import {
 } from 'antd';
 import { ReloadOutlined, RocketOutlined, StopOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { Tileseeder } from '@centia-io/sdk';
-import type { SeedJob, SeedJobInput, SeedJobStatus } from '@centia-io/sdk';
+import { Tileseeder } from '@mapcentia/gc2-sdk';
+import type { SeedJob, SeedJobInput, SeedJobStatus } from '@mapcentia/gc2-sdk';
 import { message } from '../../utils/message';
 import { getAdminClient, getApiErrorCode, getErrorMessage } from '../../baas/adminClient';
 import { useAuth } from '../../auth/AuthProvider';

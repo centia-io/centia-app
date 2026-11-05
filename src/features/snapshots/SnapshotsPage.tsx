@@ -7,8 +7,8 @@ import {
   CameraOutlined, CopyOutlined, DownloadOutlined, LinkOutlined, ReloadOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { Snapshots, isCentiaApiError } from '@centia-io/sdk';
-import type { RelationSnapshot, SnapshotFormat, SnapshotFormatResult, SnapshotJob, SnapshotStatus } from '@centia-io/sdk';
+import { Snapshots, isCentiaApiError } from '@mapcentia/gc2-sdk';
+import type { RelationSnapshot, SnapshotFormat, SnapshotFormatResult, SnapshotJob, SnapshotStatus } from '@mapcentia/gc2-sdk';
 import { message } from '../../utils/message';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
 import { getStatus } from '../../baas/client';

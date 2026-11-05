@@ -4,7 +4,7 @@ import { Form, Input, InputNumber, Select, Button, Space, Spin, Upload } from 'a
 import { message } from '../../utils/message';
 import { ArrowLeftOutlined, UploadOutlined } from '@ant-design/icons';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
-import type { CreateFunctionRequest, FunctionInfo, FunctionTriggers } from '@centia-io/sdk';
+import type { CreateFunctionRequest, FunctionInfo, FunctionTriggers } from '@mapcentia/gc2-sdk';
 import { queryClient } from '../../data/queryClient';
 import CodeEditor from '../../components/CodeEditor';
 

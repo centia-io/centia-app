@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Mapcache } from '@centia-io/sdk';
+import { Mapcache } from '@mapcentia/gc2-sdk';
 import { getAdminClient } from '../../baas/adminClient';
 import { getSql } from '../../baas/client';
 import { useTableSummary } from '../../hooks/useSchemaNames';

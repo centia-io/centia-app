@@ -28,13 +28,13 @@ export default function LoginPage() {
   return (
     <Flex justify="center" align="center" style={{ minHeight: '100vh', background: token.colorBgLayout }}>
       <Card style={{ width: 360, textAlign: 'center' }}>
-        <img src="https://centia.io/img/centia-logo-dark.svg" alt="Centia.io" style={{ height: 40, marginBottom: 16 }} />
-        <Typography.Title level={3}>Centia.io Admin</Typography.Title>
+        <img src="https://gc2.io/img/gc2-logo-dark.svg" alt="GC2" style={{ height: 40, marginBottom: 16 }} />
+        <Typography.Title level={3}>GC2 Admin</Typography.Title>
         <Typography.Paragraph type="secondary">
-          Log in to manage your Centia.io BaaS instance
+          Log in to manage your GC2 (Geo Compute Cloud) instance
         </Typography.Paragraph>
         <Button type="primary" size="large" icon={<LoginOutlined />} onClick={signIn}>
-          Login with Centia.io
+          Login with GC2
         </Button>
       </Card>
     </Flex>

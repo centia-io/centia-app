@@ -7,7 +7,7 @@ import { useSchemaNames, tableSummaryKey, SCHEMAS_KEY } from '../../hooks/useSch
 import { queryClient } from '../../data/queryClient';
 import type { UploadFile } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import type { FileProcessResponse } from '@centia-io/sdk';
+import type { FileProcessResponse } from '@mapcentia/gc2-sdk';
 import JSZip from 'jszip';
 
 const getResultColumns = (hasSsrs: boolean): ColumnsType<FileProcessResponse> => [

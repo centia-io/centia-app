@@ -12,7 +12,7 @@ const SRS_OPTIONS = ['4326', '3857', '25832'];
 export default function OgcServicesPage() {
   const { user } = useAuth();
   const database = (user?.database as string) ?? '';
-  const host = import.meta.env.VITE_CENTIA_HOST;
+  const host = import.meta.env.VITE_GC2_HOST;
 
   const [schema, setSchema] = useState<string | null>(null);
   const [srs, setSrs] = useState<string | null>(null);

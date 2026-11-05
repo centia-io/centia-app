@@ -6,7 +6,7 @@ import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from 
 import type { DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { Label, LayerClass, Style } from '@centia-io/sdk';
+import type { Label, LayerClass, Style } from '@mapcentia/gc2-sdk';
 import { CLASS_FIELDS, LABEL_FIELDS, STYLE_FIELDS, FieldGrid, type FieldDef } from './fieldDefs';
 
 let nextTmpKey = 1;

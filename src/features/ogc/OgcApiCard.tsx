@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Alert, Card, Select, Space, Tag, Typography } from 'antd';
 import { useQuery } from '@tanstack/react-query';
-import { Ogc } from '@centia-io/sdk';
+import { Ogc } from '@mapcentia/gc2-sdk';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
 import UrlField from './UrlField';
 

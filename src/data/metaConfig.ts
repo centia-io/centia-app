@@ -1,4 +1,4 @@
-import type { MetaConfigFieldset } from '@centia-io/sdk';
+import type { MetaConfigFieldset } from '@mapcentia/gc2-sdk';
 import type { JSONSchema, PropertySchema } from '../components/SchemaForm';
 
 /**

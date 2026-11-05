@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Drawer, Form, Input, Select, Switch, Button } from 'antd';
 import { message } from '../../utils/message';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
-import type { CreateColumnRequest, PatchColumnRequest } from '@centia-io/sdk';
+import type { CreateColumnRequest, PatchColumnRequest } from '@mapcentia/gc2-sdk';
 
 const PG_TYPES = [
   'integer', 'bigint', 'smallint', 'serial', 'bigserial',

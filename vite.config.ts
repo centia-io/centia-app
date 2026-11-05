@@ -17,7 +17,7 @@ export default defineConfig({
   resolve: {
     dedupe: ['react', 'react-dom'],
     alias: {
-      '@centia-io/sdk': path.resolve(__dirname, 'node_modules/@centia-io/sdk/dist/centia-io-sdk.js'),
+      '@mapcentia/gc2-sdk': path.resolve(__dirname, 'node_modules/@mapcentia/gc2-sdk/dist/gc2-sdk.js'),
     },
   },
   build: {

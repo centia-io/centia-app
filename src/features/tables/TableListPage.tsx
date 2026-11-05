@@ -7,7 +7,7 @@ import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from 
 import type { DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { TableInfo } from '@centia-io/sdk';
+import type { TableInfo } from '@mapcentia/gc2-sdk';
 import { useMetaQuery, invalidateMeta } from '../../hooks/useMetaQuery';
 import { useTableSummary, tableSummaryKey, SCHEMAS_KEY } from '../../hooks/useSchemaNames';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';

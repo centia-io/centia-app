@@ -6,8 +6,8 @@ import {
   CaretRightOutlined, DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, StopOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { Scheduler } from '@centia-io/sdk';
-import type { SchedulerJob, SchedulerJobInput, SchedulerRun, SchedulerRunStatus } from '@centia-io/sdk';
+import { Scheduler } from '@mapcentia/gc2-sdk';
+import type { SchedulerJob, SchedulerJobInput, SchedulerRun, SchedulerRunStatus } from '@mapcentia/gc2-sdk';
 import { message } from '../../utils/message';
 import { getAdminClient, getApiErrorCode, getErrorMessage } from '../../baas/adminClient';
 import { useAuth } from '../../auth/AuthProvider';

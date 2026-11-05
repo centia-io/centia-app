@@ -1,6 +1,6 @@
 import { Drawer } from 'antd';
-import { AgentChat } from '@centia-io/agent-ui';
-import '@centia-io/agent-ui/styles.css';
+import { AgentChat } from '@mapcentia/gc2-agent-ui';
+import '@mapcentia/gc2-agent-ui/styles.css';
 import { queryClient } from '../data/queryClient';
 import { bumpWmsRefresh } from '../features/map/mapStore';
 import { useTheme } from '../theme/ThemeProvider';
@@ -23,7 +23,7 @@ export default function AgentDrawer() {
 
   return (
     <Drawer
-      title="Centia AI"
+      title="GC2 AI"
       placement="right"
       width={480}
       open={open}

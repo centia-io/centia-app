@@ -3,8 +3,8 @@
 // Module-level WebSocket + state. Connection survives page navigation,
 // events keep streaming into the store while user is elsewhere.
 
-import { Ws } from '@centia-io/sdk';
-import type { BatchMessage, SubscriptionRequest } from '@centia-io/sdk';
+import { Ws } from '@mapcentia/gc2-sdk';
+import type { BatchMessage, SubscriptionRequest } from '@mapcentia/gc2-sdk';
 import { createStore } from '../../utils/createStore';
 import type { EventEntry } from './EventLog';
 
@@ -73,7 +73,7 @@ export function connect() {
   if (ws) return;
   realtimeStore.set({ error: null });
   const instance = new Ws({
-    host: import.meta.env.VITE_CENTIA_WS_HOST,
+    host: import.meta.env.VITE_GC2_WS_HOST,
     reconnect: true,
     reconnectInterval: 3000,
   });

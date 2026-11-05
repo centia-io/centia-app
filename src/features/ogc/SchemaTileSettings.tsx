@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import {
   Alert, Button, Card, Divider, Form, Input, InputNumber, Popconfirm, Radio, Select, Space, Tag, Typography,
 } from 'antd';
-import { Mapcache } from '@centia-io/sdk';
-import type { MapcacheTilesetDeleteResult, SchemaTileSettingsInput } from '@centia-io/sdk';
+import { Mapcache } from '@mapcentia/gc2-sdk';
+import type { MapcacheTilesetDeleteResult, SchemaTileSettingsInput } from '@mapcentia/gc2-sdk';
 import { useQuery } from '@tanstack/react-query';
 import { message } from '../../utils/message';
 import { getAdminClient, getApiErrorCode, getErrorMessage } from '../../baas/adminClient';

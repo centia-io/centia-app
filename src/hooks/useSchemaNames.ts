@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import type { SchemaInfo, TableInfo } from '@centia-io/sdk';
+import type { SchemaInfo, TableInfo } from '@mapcentia/gc2-sdk';
 import { getAdminClient } from '../baas/adminClient';
 
 /**

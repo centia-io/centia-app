@@ -4,7 +4,7 @@ import { Form, Input, InputNumber, Select, Button, Space, Spin } from 'antd';
 import { message } from '../../utils/message';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
-import type { PatchRpcMethodRequest } from '@centia-io/sdk';
+import type { PatchRpcMethodRequest } from '@mapcentia/gc2-sdk';
 import { queryClient } from '../../data/queryClient';
 import CodeEditor from '../../components/CodeEditor';
 

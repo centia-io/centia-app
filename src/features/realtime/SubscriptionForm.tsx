@@ -4,7 +4,7 @@ import { Button, Input, Select, List, Space, Form, Tag } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { useSchemaNames, useTableSummary } from '../../hooks/useSchemaNames';
 import { eventStatuses } from './eventsApi';
-import type { SubscriptionRequest } from '@centia-io/sdk';
+import type { SubscriptionRequest } from '@mapcentia/gc2-sdk';
 
 interface Props {
   subscriptions: SubscriptionRequest[];

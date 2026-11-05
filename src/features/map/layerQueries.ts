@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { isCentiaApiError } from '@centia-io/sdk';
-import type { Layer } from '@centia-io/sdk';
+import { isCentiaApiError } from '@mapcentia/gc2-sdk';
+import type { Layer } from '@mapcentia/gc2-sdk';
 import { getAdminClient } from '../../baas/adminClient';
 import type { GeoTable } from './mapStore';
 

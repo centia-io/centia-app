@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Modal, Select, Segmented, Spin, Space, Typography } from 'antd';
 import { message } from '../../utils/message';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
-import type { UserInfo } from '@centia-io/sdk';
+import type { UserInfo } from '@mapcentia/gc2-sdk';
 
 type Level = 'none' | 'read' | 'write';
 

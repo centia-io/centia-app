@@ -7,7 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import { queryClient } from '../../data/queryClient';
 import { getAdminClient, getErrorMessage } from '../../baas/adminClient';
 import { confirmDelete } from '../../components/ConfirmDelete';
-import type { FunctionInfo, FunctionTriggers } from '@centia-io/sdk';
+import type { FunctionInfo, FunctionTriggers } from '@mapcentia/gc2-sdk';
 import FunctionInvokeDrawer from './FunctionInvokeDrawer';
 import FunctionTypesDrawer from './FunctionTypesDrawer';
 

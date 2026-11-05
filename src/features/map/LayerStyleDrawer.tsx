@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Collapse, Drawer, Space, Spin } from 'antd';
-import type { Layer } from '@centia-io/sdk';
+import type { Layer } from '@mapcentia/gc2-sdk';
 import { message } from '../../utils/message';
 import { modal } from '../../utils/modal';
 import { getErrorMessage } from '../../baas/adminClient';

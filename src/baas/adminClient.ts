@@ -1,5 +1,5 @@
-import { createCentiaAdminClient, isCentiaApiError } from '@centia-io/sdk';
-import type { CentiaAdminClient } from '@centia-io/sdk';
+import { createCentiaAdminClient, isCentiaApiError } from '@mapcentia/gc2-sdk';
+import type { CentiaAdminClient } from '@mapcentia/gc2-sdk';
 import { getStatus } from './client';
 
 let adminClient: CentiaAdminClient | null = null;
@@ -11,7 +11,7 @@ let adminClient: CentiaAdminClient | null = null;
 export function getAdminClient(): CentiaAdminClient {
   if (!adminClient) {
     adminClient = createCentiaAdminClient({
-      baseUrl: import.meta.env.VITE_CENTIA_HOST,
+      baseUrl: import.meta.env.VITE_GC2_HOST,
       auth: {
         getAccessToken: async () => getStatus().getTokens().accessToken,
       },
