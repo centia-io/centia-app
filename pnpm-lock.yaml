@@ -11,15 +11,6 @@ importers:
       '@ant-design/icons':
         specifier: ^6.1.0
         version: 6.2.5(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      '@centia-io/agent-protocol':
-        specifier: ^0.1.0
-        version: 0.1.0
-      '@centia-io/agent-ui':
-        specifier: ^0.1.0
-        version: 0.1.0(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      '@centia-io/sdk':
-        specifier: ^0.2.27
-        version: 0.2.27
       '@codemirror/lang-json':
         specifier: ^6.0.2
         version: 6.0.2
@@ -44,6 +35,15 @@ importers:
       '@dnd-kit/utilities':
         specifier: ^3.2.2
         version: 3.2.2(react@19.2.7)
+      '@mapcentia/gc2-agent-protocol':
+        specifier: ^0.2.0
+        version: 0.2.0
+      '@mapcentia/gc2-agent-ui':
+        specifier: ^0.2.0
+        version: 0.2.0(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@mapcentia/gc2-sdk':
+        specifier: ^0.3.0
+        version: 0.3.1
       '@tanstack/db':
         specifier: ^0.5.30
         version: 0.5.33(typescript@5.9.3)
@@ -229,19 +229,6 @@ packages:
   '@babel/types@7.29.7':
     resolution: {integrity: sha512-4zBIxpPzowiZpusoFkyGVwakdRJUyuH5PxQ/PrqghfdFWWasvnCdPfQXHrenDai+gyLARulZjZowCOj6fjT4pA==}
     engines: {node: '>=6.9.0'}
-
-  '@centia-io/agent-protocol@0.1.0':
-    resolution: {integrity: sha512-FlEz5UMLVWp1W9WSo8gEPj7141OwXU9ghnzIJrRsngCfvbA02Pou19/f6whbIBDOZhbLgEH05yBW6pwwXMMP5g==}
-
-  '@centia-io/agent-ui@0.1.0':
-    resolution: {integrity: sha512-vrMWDvjl+f0HJbOH5if+UkcPQ8c1vwThqrkPzuWcFCjff3wPuavm0tWc0hU3knBHAHg5IaE6ov3VvzndBw9TbQ==}
-    peerDependencies:
-      react: '>=18'
-      react-dom: '>=18'
-
-  '@centia-io/sdk@0.2.27':
-    resolution: {integrity: sha512-Ssdaapsxv2N/s2atqdV6L/vj1/ISLpYtYNWvxuOnaRL6/STThV+HGjZcLV0gBXR6cpbNZfxhMQbIKqnqRRHIUQ==}
-    engines: {node: '>=18'}
 
   '@codemirror/autocomplete@6.20.3':
     resolution: {integrity: sha512-tlosUqb+3BbxCxZdu4tKeRghPFC+QM7q4X5YhKV2eCmPG+1r2F3f4AaSz5sCrFqUtX4Jh20VFTKecl16MgiV9g==}
@@ -507,6 +494,19 @@ packages:
   '@mapbox/whoots-js@3.1.0':
     resolution: {integrity: sha512-Es6WcD0nO5l+2BOQS4uLfNPYQaNDfbot3X1XUoloz+x0mPDS3eeORZJl06HXjwBG1fOGwCRnzK88LMdxKRrd6Q==}
     engines: {node: '>=6.0.0'}
+
+  '@mapcentia/gc2-agent-protocol@0.2.0':
+    resolution: {integrity: sha512-F/kkNKMpiXo+u8/VeT+c3UqZngeegJao+BaYptqxQ3de4eXoV7vur+5sfD4S1jgnPvOfvss05la1FYZADJBETg==}
+
+  '@mapcentia/gc2-agent-ui@0.2.0':
+    resolution: {integrity: sha512-8g7VsWPZ3blHnRr8UVXv/WqzwqhKxvycrnPkBrWam1+D4q00MQ+Z+Jgv0lsOcu5j4MaCGz7TEC8y42qfOy9u+g==}
+    peerDependencies:
+      react: '>=18'
+      react-dom: '>=18'
+
+  '@mapcentia/gc2-sdk@0.3.1':
+    resolution: {integrity: sha512-5fSSpJFtHRzXkJVOqvwK9EmDdhB/rkTt96VdoA4vliIFh8kUhZlTYNOe/sue6nH0sexCyxFhUZJsy8W3zGso9g==}
+    engines: {node: '>=18'}
 
   '@maplibre/geojson-vt@6.1.0':
     resolution: {integrity: sha512-2eIY4gZxeKIVOZVNkAMb+5NgXhgsMQpOveTQAvnp53LYqHGJZDidk7Ew0Tged9PThidpbS+NFTh0g4zivhPDzQ==}
@@ -1900,24 +1900,6 @@ snapshots:
       '@babel/helper-string-parser': 7.29.7
       '@babel/helper-validator-identifier': 7.29.7
 
-  '@centia-io/agent-protocol@0.1.0': {}
-
-  '@centia-io/agent-ui@0.1.0(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
-    dependencies:
-      '@centia-io/agent-protocol': 0.1.0
-      react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
-      react-markdown: 10.1.0(@types/react@19.2.17)(react@19.2.7)
-      remark-gfm: 4.0.1
-    transitivePeerDependencies:
-      - '@types/react'
-      - supports-color
-
-  '@centia-io/sdk@0.2.27':
-    dependencies:
-      configstore: 7.1.0
-      proper-lockfile: 4.1.2
-
   '@codemirror/autocomplete@6.20.3':
     dependencies:
       '@codemirror/language': 6.12.3
@@ -2144,6 +2126,24 @@ snapshots:
       pbf: 4.0.2
 
   '@mapbox/whoots-js@3.1.0': {}
+
+  '@mapcentia/gc2-agent-protocol@0.2.0': {}
+
+  '@mapcentia/gc2-agent-ui@0.2.0(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+    dependencies:
+      '@mapcentia/gc2-agent-protocol': 0.2.0
+      react: 19.2.7
+      react-dom: 19.2.7(react@19.2.7)
+      react-markdown: 10.1.0(@types/react@19.2.17)(react@19.2.7)
+      remark-gfm: 4.0.1
+    transitivePeerDependencies:
+      - '@types/react'
+      - supports-color
+
+  '@mapcentia/gc2-sdk@0.3.1':
+    dependencies:
+      configstore: 7.1.0
+      proper-lockfile: 4.1.2
 
   '@maplibre/geojson-vt@6.1.0':
     dependencies:
